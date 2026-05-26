@@ -58,10 +58,14 @@ export function AddEditView({ editingBirthday, onBack, onSave, onDelete }) {
   const [calendarYear, setCalendarYear] = useState(getInitialYearVal);
   const [calendarSelectedDay, setCalendarSelectedDay] = useState(getInitialDayVal);
   const [calendarHideYear, setCalendarHideYear] = useState(editingBirthday?.hideYear || false);
+  const [showMonthDropdown, setShowMonthDropdown] = useState(false);
+  const [showYearDropdown, setShowYearDropdown] = useState(false);
   
   const fileInputRef = useRef(null);
   const cameraInputRef = useRef(null);
   const popoverRef = useRef(null);
+  const monthDropdownRef = useRef(null);
+  const yearDropdownRef = useRef(null);
 
   // Webcam states and refs
   const [showCameraModal, setShowCameraModal] = useState(false);
@@ -97,6 +101,24 @@ export function AddEditView({ editingBirthday, onBack, onSave, onDelete }) {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [showPhotoPopover]);
+
+  // Handle click outside Month and Year dropdowns to close them
+  useEffect(() => {
+    const handleClickOutsideDropdown = (event) => {
+      if (monthDropdownRef.current && !monthDropdownRef.current.contains(event.target)) {
+        setShowMonthDropdown(false);
+      }
+      if (yearDropdownRef.current && !yearDropdownRef.current.contains(event.target)) {
+        setShowYearDropdown(false);
+      }
+    };
+    if (showMonthDropdown || showYearDropdown) {
+      document.addEventListener('mousedown', handleClickOutsideDropdown);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutsideDropdown);
+    };
+  }, [showMonthDropdown, showYearDropdown]);
 
   const handleOpenDatePicker = () => {
     document.activeElement?.blur();
@@ -393,9 +415,11 @@ export function AddEditView({ editingBirthday, onBack, onSave, onDelete }) {
       
       const imgRatio = imgWidth / imgHeight;
       if (imgRatio > 1) {
-        drawWidth = 128 * imgRatio;
-      } else {
+        drawWidth = 128;
         drawHeight = 128 / imgRatio;
+      } else {
+        drawWidth = 128 * imgRatio;
+        drawHeight = 128;
       }
       
       ctx.drawImage(
@@ -881,40 +905,98 @@ export function AddEditView({ editingBirthday, onBack, onSave, onDelete }) {
                 {/* Dropdowns pills */}
                 <div className="flex items-center gap-1.5">
                   {/* Month Select Wrapper */}
-                  <div className="relative">
-                    <select
-                      value={calendarMonth}
-                      onChange={(e) => setCalendarMonth(parseInt(e.target.value))}
-                      className="appearance-none bg-white dark:bg-[#0c1220] border border-slate-200 dark:border-[#222e45] shadow-sm rounded-xl pl-2.5 pr-7 py-1 text-xs font-bold text-slate-700 dark:text-slate-200 cursor-pointer focus:outline-none focus:border-blue-500 hover:bg-slate-50 dark:hover:bg-[#1a2336] transition-colors"
+                  <div className="relative" ref={monthDropdownRef}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowMonthDropdown(!showMonthDropdown);
+                        setShowYearDropdown(false);
+                      }}
+                      className="flex items-center gap-1 bg-white dark:bg-[#0c1220] border border-slate-200 dark:border-[#222e45] shadow-sm rounded-xl pl-2.5 pr-6 py-1 text-xs font-bold text-slate-700 dark:text-slate-200 cursor-pointer focus:outline-none hover:bg-slate-50 dark:hover:bg-[#1a2336] transition-all active:scale-95 relative min-w-[85px] text-left"
                     >
-                      {MONTH_NAMES.map((name, idx) => (
-                        <option key={idx} value={idx}>{name}</option>
-                      ))}
-                    </select>
-                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2 text-slate-400 dark:text-slate-500">
-                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
-                      </svg>
-                    </div>
+                      <span className="truncate pr-1">{MONTH_NAMES[calendarMonth]}</span>
+                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2 text-slate-400 dark:text-slate-500">
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </div>
+                    </button>
+
+                    {showMonthDropdown && (
+                      <div className="absolute top-[115%] left-0 z-[1050] bg-slate-900/95 dark:bg-[#0c1220]/95 backdrop-blur-md border border-slate-700 dark:border-[#222e45] rounded-2xl shadow-2xl py-1.5 w-32 max-h-60 overflow-y-auto animate-scale-in">
+                        {MONTH_NAMES.map((name, idx) => {
+                          const isSelected = calendarMonth === idx;
+                          return (
+                            <button
+                              key={idx}
+                              type="button"
+                              onClick={() => {
+                                setCalendarMonth(idx);
+                                setShowMonthDropdown(false);
+                              }}
+                              className={`w-full text-left px-3.5 py-2 text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+                                isSelected
+                                  ? 'text-white bg-blue-500/30'
+                                  : 'text-slate-300 hover:bg-white/10 hover:text-white'
+                              }`}
+                            >
+                              <span className={`w-3 flex items-center justify-center shrink-0 ${isSelected ? 'opacity-100' : 'opacity-0'}`}>
+                                ✓
+                              </span>
+                              <span>{name}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
 
                   {/* Year Select Wrapper */}
-                  <div className="relative">
-                    <select
-                      value={calendarYear}
+                  <div className="relative" ref={yearDropdownRef}>
+                    <button
+                      type="button"
                       disabled={calendarHideYear}
-                      onChange={(e) => setCalendarYear(parseInt(e.target.value))}
-                      className="appearance-none bg-white dark:bg-[#0c1220] border border-slate-200 dark:border-[#222e45] shadow-sm rounded-xl pl-2.5 pr-7 py-1 text-xs font-bold text-slate-700 dark:text-slate-200 cursor-pointer focus:outline-none focus:border-blue-500 hover:bg-slate-50 dark:hover:bg-[#1a2336] disabled:opacity-40 disabled:bg-slate-100 disabled:dark:bg-slate-800 disabled:cursor-not-allowed transition-all"
+                      onClick={() => {
+                        setShowYearDropdown(!showYearDropdown);
+                        setShowMonthDropdown(false);
+                      }}
+                      className="flex items-center gap-1 bg-white dark:bg-[#0c1220] border border-slate-200 dark:border-[#222e45] shadow-sm rounded-xl pl-2.5 pr-6 py-1 text-xs font-bold text-slate-700 dark:text-slate-200 cursor-pointer focus:outline-none hover:bg-slate-50 dark:hover:bg-[#1a2336] disabled:opacity-40 disabled:bg-slate-100 disabled:dark:bg-slate-800 disabled:cursor-not-allowed transition-all active:scale-95 relative min-w-[70px] text-left"
                     >
-                      {Array.from({ length: new Date().getFullYear() - 1900 + 1 }, (_, i) => new Date().getFullYear() - i).map((y) => (
-                        <option key={y} value={y}>{y}</option>
-                      ))}
-                    </select>
-                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2 text-slate-400 dark:text-slate-500">
-                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
-                      </svg>
-                    </div>
+                      <span>{calendarYear}</span>
+                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2 text-slate-400 dark:text-slate-500">
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </div>
+                    </button>
+
+                    {showYearDropdown && !calendarHideYear && (
+                      <div className="absolute top-[115%] right-0 z-[1050] bg-slate-900/95 dark:bg-[#0c1220]/95 backdrop-blur-md border border-slate-700 dark:border-[#222e45] rounded-2xl shadow-2xl py-1.5 w-28 max-h-60 overflow-y-auto animate-scale-in">
+                        {Array.from({ length: new Date().getFullYear() - 1900 + 1 }, (_, i) => new Date().getFullYear() - i).map((y) => {
+                          const isSelected = calendarYear === y;
+                          return (
+                            <button
+                              key={y}
+                              type="button"
+                              onClick={() => {
+                                setCalendarYear(y);
+                                setShowYearDropdown(false);
+                              }}
+                              className={`w-full text-left px-3.5 py-2 text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+                                isSelected
+                                  ? 'text-white bg-blue-500/30'
+                                  : 'text-slate-300 hover:bg-white/10 hover:text-white'
+                              }`}
+                            >
+                              <span className={`w-3 flex items-center justify-center shrink-0 ${isSelected ? 'opacity-100' : 'opacity-0'}`}>
+                                ✓
+                              </span>
+                              <span>{y}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 </div>
 

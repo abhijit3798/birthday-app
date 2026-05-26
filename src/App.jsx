@@ -238,13 +238,6 @@ export function App() {
         body = `${contact.name}'s birthday is in ${daysLeft} days! 🎁`;
       }
 
-      // Show beautiful non-blocking in-app toast notification instead of browser blocking alert
-      setToast({
-        title,
-        body,
-        contact
-      });
-
       const defaultIcon = window.location.origin + '/icon.svg';
 
       if ('Notification' in window && Notification.permission === 'granted') {
@@ -273,9 +266,20 @@ export function App() {
           }
         } catch (err) {
           console.error('Error triggering local desktop Notification:', err);
+          // Fallback to in-app toast on error
+          setToast({
+            title,
+            body,
+            contact
+          });
         }
       } else {
-        console.log('In-app fallback notification triggered:', title, body);
+        // Fallback to in-app toast if native notifications are not supported or granted
+        setToast({
+          title,
+          body,
+          contact
+        });
       }
     };
 
