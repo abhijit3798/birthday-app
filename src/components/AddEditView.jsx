@@ -442,7 +442,8 @@ export function AddEditView({ editingBirthday, onBack, onSave, onDelete }) {
       notes: notes.trim(),
       image,
       hideYear,
-      category
+      category,
+      customReminders: editingBirthday ? editingBirthday.customReminders : undefined
     };
 
     onSave(data);

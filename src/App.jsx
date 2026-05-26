@@ -93,6 +93,16 @@ export function App() {
   const [selectedBirthday, setSelectedBirthday] = useState(null);
   const [editingBirthday, setEditingBirthday] = useState(null);
   const [darkMode, setDarkMode] = useLocalStorage('birthday_dark_mode', false);
+  const [toast, setToast] = useState(null);
+
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => {
+        setToast(null);
+      }, 6000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
 
   useEffect(() => {
     if (darkMode) {
@@ -185,7 +195,11 @@ export function App() {
           const oneDayMs = 24 * 60 * 60 * 1000;
           const isValidWindow = diffMs >= 0 && diffMs < oneDayMs; // Triggers if time has passed, but within 24h
 
-          const uniqueKey = `${contact.id}_${triggerTime.getFullYear()}_${triggerTime.getMonth()}_${triggerTime.getDate()}`;
+          const uniqueKey = `${contact.id}_${triggerTime.getFullYear()}_${triggerTime.getMonth()}_${triggerTime.getDate()}_${hours}_${minutes}`;
+
+          console.log(`⏰ Scheduler - [${contact.name}]: now: ${now.getHours()}:${now.getMinutes()}:${now.getSeconds()}, trigger: ${hours}:${minutes}, diff: ${Math.round(diffMs/1000)}s, valid: ${isValidWindow}, sent: ${!!sentReminders[uniqueKey]}`);
+
+
 
           if (isValidWindow && !sentReminders[uniqueKey]) {
             // Trigger!
@@ -217,27 +231,37 @@ export function App() {
         body = `${contact.name}'s birthday is in ${daysLeft} days! 🎁`;
       }
 
+      // Show beautiful non-blocking in-app toast notification instead of browser blocking alert
+      setToast({
+        title,
+        body,
+        contact
+      });
+
+      const defaultIcon = window.location.origin + '/icon.svg';
+
       if ('Notification' in window && Notification.permission === 'granted') {
         try {
           if (navigator.serviceWorker) {
             navigator.serviceWorker.ready.then((registration) => {
               registration.showNotification(title, {
                 body,
-                icon: contact.image || '/favicon.svg',
+                icon: contact.image || defaultIcon,
+                badge: defaultIcon,
                 vibrate: [200, 100, 200],
                 tag: `bday-reminder-${contact.id}`,
                 renotify: true
               }).catch(() => {
                 new Notification(title, {
                   body,
-                  icon: contact.image || '/favicon.svg'
+                  icon: contact.image || defaultIcon
                 });
               });
             });
           } else {
             new Notification(title, {
               body,
-              icon: contact.image || '/favicon.svg'
+              icon: contact.image || defaultIcon
             });
           }
         } catch (err) {
@@ -304,17 +328,24 @@ export function App() {
   }, []);
 
   const handleSaveBirthday = (data) => {
+    let wasEditing = false;
+    const dataWithTimestamp = { ...data, updatedAt: Date.now() };
     setBirthdays((prev) => {
       const exists = prev.some((b) => b.id === data.id);
       if (exists) {
-        return prev.map((b) => (b.id === data.id ? data : b));
+        wasEditing = true;
+        return prev.map((b) => (b.id === data.id ? dataWithTimestamp : b));
       } else {
-        return [...prev, data];
+        return [...prev, dataWithTimestamp];
       }
     });
     
-    // Auto redirect back to list view
-    setCurrentView('list');
+    if (wasEditing) {
+      setSelectedBirthday(dataWithTimestamp);
+      setCurrentView('detail');
+    } else {
+      setCurrentView('list');
+    }
   };
 
   const handleDeleteBirthday = (id) => {
@@ -333,7 +364,8 @@ export function App() {
   };
 
   const handleUpdateBirthday = (data) => {
-    setBirthdays((prev) => prev.map((b) => (b.id === data.id ? data : b)));
+    const dataWithTimestamp = { ...data, updatedAt: Date.now() };
+    setBirthdays((prev) => prev.map((b) => (b.id === data.id ? dataWithTimestamp : b)));
   };
 
   const handleCardSelect = (bday) => {
@@ -345,7 +377,32 @@ export function App() {
   const activeBirthdayInDetail = birthdays.find(b => b.id === selectedBirthday?.id) || selectedBirthday;
 
   return (
-    <div className="w-full min-h-screen bg-[#f2f5fa]">
+    <div className="w-full min-h-screen bg-[#f2f5fa] relative overflow-x-hidden">
+      {/* Premium Glassmorphic In-App Toast Notification */}
+      {toast && (
+        <div 
+          className="fixed top-4 left-1/2 -translate-x-1/2 z-[9999] w-[90%] max-w-[380px] bg-gradient-to-r from-[#F2591D] to-[#ff783e] text-white p-4 rounded-2xl shadow-[0_15px_30px_-5px_rgba(242,89,29,0.3)] border border-white/25 flex items-start gap-3.5 animate-slide-down cursor-pointer select-none"
+          onClick={() => setToast(null)}
+        >
+          <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center text-xl shrink-0 animate-bounce">
+            🎂
+          </div>
+          <div className="flex-1 flex flex-col min-w-0">
+            <span className="text-sm font-black tracking-tight leading-none">{toast.title}</span>
+            <span className="text-xs text-white/90 font-semibold mt-1 leading-snug">{toast.body}</span>
+          </div>
+          <button 
+            onClick={(e) => {
+              e.stopPropagation();
+              setToast(null);
+            }}
+            className="text-white/60 hover:text-white active:scale-90 transition-all font-bold text-xs p-1.5 rounded-full hover:bg-white/10 shrink-0 flex items-center justify-center w-6 h-6"
+            aria-label="Close Notification"
+          >
+            ✕
+          </button>
+        </div>
+      )}
       {currentView === 'list' && (
         <ListView
           birthdays={birthdays}

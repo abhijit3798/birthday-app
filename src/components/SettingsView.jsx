@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { ArrowLeft, ChevronRight, Download, ChevronUp, ChevronDown } from 'lucide-react';
 import useLocalStorage from '../hooks/useLocalStorage';
-import { getReminderTriggerDate } from '../utils/dateHelpers';
+import { getReminderTriggerDate, formatTime12Hour } from '../utils/dateHelpers';
 
 export function SettingsView({ onBack, onNavigate, birthdays, deferredPrompt, isAppInstalled, onAppInstalled, darkMode, onToggleDarkMode }) {
   const [remindersSettings, setRemindersSettings] = useLocalStorage('birthday_reminders_settings', {
@@ -12,6 +12,9 @@ export function SettingsView({ onBack, onNavigate, birthdays, deferredPrompt, is
   });
 
   const [showTimePicker, setShowTimePicker] = useState(false);
+  const [pickerHour, setPickerHour] = useState('09');
+  const [pickerMinute, setPickerMinute] = useState('00');
+  const [pickerPeriod, setPickerPeriod] = useState('AM');
 
   useEffect(() => {
     // Run self-testing logic check simulating non-leap year for Feb 29 birthday
@@ -104,7 +107,7 @@ export function SettingsView({ onBack, onNavigate, birthdays, deferredPrompt, is
                   checked={remindersSettings.enabled}
                   onChange={(e) => {
                     const isChecked = e.target.checked;
-                    setRemindersSettings(prev => ({ ...prev, enabled: isChecked }));
+                    setRemindersSettings(prev => ({ ...prev, enabled: isChecked, updatedAt: Date.now() }));
                     if (isChecked && 'Notification' in window) {
                       Notification.requestPermission().then((permission) => {
                         if (permission !== 'granted') {
@@ -137,7 +140,7 @@ export function SettingsView({ onBack, onNavigate, birthdays, deferredPrompt, is
                       value={remindersSettings.daysBefore}
                       onChange={(e) => {
                         const val = Math.min(365, Math.max(0, parseInt(e.target.value) || 0));
-                        setRemindersSettings(prev => ({ ...prev, daysBefore: val }));
+                        setRemindersSettings(prev => ({ ...prev, daysBefore: val, updatedAt: Date.now() }));
                       }}
                       className="w-16 bg-slate-50 dark:bg-[#0c1220] border border-slate-200 dark:border-[#222e45] rounded-xl px-2 py-1 text-sm font-bold text-slate-700 dark:text-slate-200 text-center focus:outline-none focus:border-[#F2591D]"
                     />
@@ -148,12 +151,23 @@ export function SettingsView({ onBack, onNavigate, birthdays, deferredPrompt, is
                 {/* Notification Time Selector */}
                 <button
                   type="button"
-                  onClick={() => setShowTimePicker(true)}
+                  onClick={() => {
+                    const timeParts = (remindersSettings.notificationTime || '09:00').split(':');
+                    let h = parseInt(timeParts[0] || '09', 10);
+                    const m = timeParts[1] || '00';
+                    const period = h >= 12 ? 'PM' : 'AM';
+                    h = h % 12;
+                    h = h ? h : 12;
+                    setPickerHour(String(h).padStart(2, '0'));
+                    setPickerMinute(m);
+                    setPickerPeriod(period);
+                    setShowTimePicker(true);
+                  }}
                   className="w-full flex justify-between items-center py-3 px-1 hover:bg-gray-50/50 dark:hover:bg-[#1e293b]/50 rounded-xl transition-all cursor-pointer text-left"
                 >
                   <span className="text-sm font-bold text-slate-700 dark:text-slate-200">Notification Time</span>
                   <div className="flex items-center gap-1 text-xs text-slate-400 dark:text-slate-400 font-semibold">
-                    <span>{remindersSettings.notificationTime}</span>
+                    <span>{formatTime12Hour(remindersSettings.notificationTime)}</span>
                     <ChevronRight size={14} />
                   </div>
                 </button>
@@ -178,7 +192,7 @@ export function SettingsView({ onBack, onNavigate, birthdays, deferredPrompt, is
                 value={remindersSettings.leapYearDaysBefore}
                 onChange={(e) => {
                   const val = Math.min(365, Math.max(0, parseInt(e.target.value) || 0));
-                  setRemindersSettings(prev => ({ ...prev, leapYearDaysBefore: val }));
+                  setRemindersSettings(prev => ({ ...prev, leapYearDaysBefore: val, updatedAt: Date.now() }));
                 }}
                 className="w-16 bg-slate-50 dark:bg-[#0c1220] border border-slate-200 dark:border-[#222e45] rounded-xl px-2 py-1 text-sm font-bold text-slate-700 dark:text-slate-200 text-center focus:outline-none focus:border-[#F2591D]"
               />
@@ -291,140 +305,159 @@ export function SettingsView({ onBack, onNavigate, birthdays, deferredPrompt, is
       </div>
 
       {/* Time Picker Popup Modal */}
-      {showTimePicker && (() => {
-        const timeParts = (remindersSettings.notificationTime || '09:00').split(':');
-        const selectedHour = timeParts[0] || '09';
-        const selectedMinute = timeParts[1] || '00';
-        
-        return (
-          <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
-            {/* Backdrop overlay with blur */}
-            <div 
-              className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm animate-fade-in"
-              onClick={() => setShowTimePicker(false)}
-            />
+      {showTimePicker && (
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
+          {/* Backdrop overlay with blur */}
+          <div 
+            className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm animate-fade-in"
+            onClick={() => setShowTimePicker(false)}
+          />
+          
+          {/* Time Picker Card */}
+          <div 
+            style={{ display: 'flex', flexDirection: 'column' }}
+            className="bg-white dark:bg-[#151c2c] rounded-[28px] w-[310px] shadow-2xl border border-slate-100/80 dark:border-[#222e45] z-[1001] animate-scale-in overflow-hidden"
+          >
             
-            {/* Time Picker Card */}
+            {/* Header Title */}
+            <div className="text-center px-5 pt-5 pb-3 border-b border-slate-100 dark:border-[#222e45] bg-white dark:bg-[#151c2c]">
+              <span className="text-sm font-black text-slate-800 dark:text-slate-100 font-headings tracking-tight">Select Time</span>
+            </div>
+
+            {/* Time Pickers */}
             <div 
-              style={{ display: 'flex', flexDirection: 'column' }}
-              className="bg-white dark:bg-[#151c2c] rounded-[28px] w-[280px] sm:w-[300px] shadow-2xl border border-slate-100/80 dark:border-[#222e45] z-[1001] animate-scale-in overflow-hidden"
+              style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}
+              className="gap-4 py-6 px-4 bg-slate-50/50 dark:bg-[#0c1220]/50"
             >
-              
-              {/* Header Title */}
-              <div className="text-center px-5 pt-5 pb-3 border-b border-slate-100 dark:border-[#222e45] bg-white dark:bg-[#151c2c]">
-                <span className="text-sm font-black text-slate-800 dark:text-slate-100 font-headings tracking-tight">Select Time</span>
-              </div>
-
-              {/* Time Pickers */}
+              {/* Hour Adjuster */}
               <div 
-                style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}
-                className="gap-6 py-6 px-4 bg-slate-50/50 dark:bg-[#0c1220]/50"
+                style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}
+                className="select-none"
               >
-                {/* Hour Adjuster */}
-                <div 
-                  style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}
-                  className="select-none"
-                >
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const nextHour = (parseInt(selectedHour) + 1) % 24;
-                      const formattedHour = String(nextHour).padStart(2, '0');
-                      setRemindersSettings(prev => ({
-                        ...prev,
-                        notificationTime: `${formattedHour}:${selectedMinute}`
-                      }));
-                    }}
-                    className="p-2 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 rounded-full transition-all text-slate-400 hover:text-[#F2591D] active:scale-90 cursor-pointer flex items-center justify-center"
-                    aria-label="Increase Hour"
-                  >
-                    <ChevronUp size={24} className="stroke-[2.5]" />
-                  </button>
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                    <span className="text-4xl font-black text-slate-800 dark:text-slate-100 tracking-tight my-1 w-16 text-center font-headings">
-                      {selectedHour}
-                    </span>
-                    <span className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">Hour</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const prevHour = (parseInt(selectedHour) - 1 + 24) % 24;
-                      const formattedHour = String(prevHour).padStart(2, '0');
-                      setRemindersSettings(prev => ({
-                        ...prev,
-                        notificationTime: `${formattedHour}:${selectedMinute}`
-                      }));
-                    }}
-                    className="p-2 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 rounded-full transition-all text-slate-400 hover:text-[#F2591D] active:scale-90 cursor-pointer flex items-center justify-center"
-                    aria-label="Decrease Hour"
-                  >
-                    <ChevronDown size={24} className="stroke-[2.5]" />
-                  </button>
-                </div>
-
-                {/* Separator */}
-                <span className="text-3xl font-black text-slate-300 dark:text-slate-700 self-center pb-5">:</span>
-
-                {/* Minute Adjuster */}
-                <div 
-                  style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}
-                  className="select-none"
-                >
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const nextMin = (parseInt(selectedMinute) + 1) % 60;
-                      const formattedMinute = String(nextMin).padStart(2, '0');
-                      setRemindersSettings(prev => ({
-                        ...prev,
-                        notificationTime: `${selectedHour}:${formattedMinute}`
-                      }));
-                    }}
-                    className="p-2 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 rounded-full transition-all text-slate-400 hover:text-[#F2591D] active:scale-90 cursor-pointer flex items-center justify-center"
-                    aria-label="Increase Minute"
-                  >
-                    <ChevronUp size={24} className="stroke-[2.5]" />
-                  </button>
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                    <span className="text-4xl font-black text-slate-800 dark:text-slate-100 tracking-tight my-1 w-16 text-center font-headings">
-                      {selectedMinute}
-                    </span>
-                    <span className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">Minute</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const prevMin = (parseInt(selectedMinute) - 1 + 60) % 60;
-                      const formattedMinute = String(prevMin).padStart(2, '0');
-                      setRemindersSettings(prev => ({
-                        ...prev,
-                        notificationTime: `${selectedHour}:${formattedMinute}`
-                      }));
-                    }}
-                    className="p-2 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 rounded-full transition-all text-slate-400 hover:text-[#F2591D] active:scale-90 cursor-pointer flex items-center justify-center"
-                    aria-label="Decrease Minute"
-                  >
-                    <ChevronDown size={24} className="stroke-[2.5]" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Done Button Footer */}
-              <div className="p-4 border-t border-slate-100 dark:border-[#222e45] flex justify-center bg-white dark:bg-[#151c2c]">
                 <button
                   type="button"
-                  onClick={() => setShowTimePicker(false)}
-                  className="w-full py-2.5 bg-[#F2591D] hover:bg-[#C24717] text-white rounded-2xl text-xs font-bold shadow-md cursor-pointer active:scale-95 transition-all"
+                  onClick={() => {
+                    const nextHour = parseInt(pickerHour) % 12 + 1;
+                    setPickerHour(String(nextHour).padStart(2, '0'));
+                  }}
+                  className="p-2 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 rounded-full transition-all text-slate-400 hover:text-[#F2591D] active:scale-90 cursor-pointer flex items-center justify-center"
+                  aria-label="Increase Hour"
                 >
-                  Done
+                  <ChevronUp size={24} className="stroke-[2.5]" />
+                </button>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  <span className="text-4xl font-black text-slate-800 dark:text-slate-100 tracking-tight my-1 w-16 text-center font-headings">
+                    {pickerHour}
+                  </span>
+                  <span className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">Hour</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const prevHour = (parseInt(pickerHour) - 2 + 12) % 12 + 1;
+                    setPickerHour(String(prevHour).padStart(2, '0'));
+                  }}
+                  className="p-2 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 rounded-full transition-all text-slate-400 hover:text-[#F2591D] active:scale-90 cursor-pointer flex items-center justify-center"
+                  aria-label="Decrease Hour"
+                >
+                  <ChevronDown size={24} className="stroke-[2.5]" />
                 </button>
               </div>
 
+              {/* Separator */}
+              <span className="text-3xl font-black text-slate-300 dark:text-slate-700 self-center pb-5">:</span>
+
+              {/* Minute Adjuster */}
+              <div 
+                style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}
+                className="select-none"
+              >
+                <button
+                  type="button"
+                  onClick={() => {
+                    const nextMin = (parseInt(pickerMinute) + 1) % 60;
+                    setPickerMinute(String(nextMin).padStart(2, '0'));
+                  }}
+                  className="p-2 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 rounded-full transition-all text-slate-400 hover:text-[#F2591D] active:scale-90 cursor-pointer flex items-center justify-center"
+                  aria-label="Increase Minute"
+                >
+                  <ChevronUp size={24} className="stroke-[2.5]" />
+                </button>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  <span className="text-4xl font-black text-slate-800 dark:text-slate-100 tracking-tight my-1 w-16 text-center font-headings">
+                    {pickerMinute}
+                  </span>
+                  <span className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">Minute</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const prevMin = (parseInt(pickerMinute) - 1 + 60) % 60;
+                    setPickerMinute(String(prevMin).padStart(2, '0'));
+                  }}
+                  className="p-2 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 rounded-full transition-all text-slate-400 hover:text-[#F2591D] active:scale-90 cursor-pointer flex items-center justify-center"
+                  aria-label="Decrease Minute"
+                >
+                  <ChevronDown size={24} className="stroke-[2.5]" />
+                </button>
+              </div>
+
+              {/* Period Adjuster (AM/PM) */}
+              <div 
+                style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}
+                className="select-none ml-2"
+              >
+                <button
+                  type="button"
+                  onClick={() => setPickerPeriod(prev => prev === 'AM' ? 'PM' : 'AM')}
+                  className="p-2 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 rounded-full transition-all text-slate-400 hover:text-[#F2591D] active:scale-90 cursor-pointer flex items-center justify-center"
+                  aria-label="Toggle Period"
+                >
+                  <ChevronUp size={24} className="stroke-[2.5]" />
+                </button>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  <span className="text-3xl font-black text-slate-800 dark:text-slate-100 tracking-tight my-1.5 w-16 text-center font-headings">
+                    {pickerPeriod}
+                  </span>
+                  <span className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">Period</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setPickerPeriod(prev => prev === 'AM' ? 'PM' : 'AM')}
+                  className="p-2 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 rounded-full transition-all text-slate-400 hover:text-[#F2591D] active:scale-90 cursor-pointer flex items-center justify-center"
+                  aria-label="Toggle Period"
+                >
+                  <ChevronDown size={24} className="stroke-[2.5]" />
+                </button>
+              </div>
             </div>
+
+            {/* Done Button Footer */}
+            <div className="p-4 border-t border-slate-100 dark:border-[#222e45] flex justify-center bg-white dark:bg-[#151c2c]">
+              <button
+                type="button"
+                onClick={() => {
+                  let h = parseInt(pickerHour, 10);
+                  if (pickerPeriod === 'PM' && h < 12) h += 12;
+                  if (pickerPeriod === 'AM' && h === 12) h = 0;
+                  const formattedHour = String(h).padStart(2, '0');
+
+                  setRemindersSettings(prev => ({
+                    ...prev,
+                    notificationTime: `${formattedHour}:${pickerMinute}`,
+                    updatedAt: Date.now()
+                  }));
+                  setShowTimePicker(false);
+                }}
+                className="w-full py-2.5 bg-[#F2591D] hover:bg-[#C24717] text-white rounded-2xl text-xs font-bold shadow-md cursor-pointer active:scale-95 transition-all"
+              >
+                Done
+              </button>
+            </div>
+
           </div>
-        );
-      })()}
+        </div>
+      )}
 
     </div>
   );
