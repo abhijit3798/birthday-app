@@ -376,7 +376,12 @@ export function AddEditView({ editingBirthday, onBack, onSave, onDelete }) {
       const cy = canvas.height / 2;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      ctx.translate(cx, cy);
+      const scaleFactor = 128 / 256;
+      const tx = offset.x * scaleFactor;
+      const ty = offset.y * scaleFactor;
+
+      // Apply translation in unrotated parent coordinate space to match CSS transform preview exactly!
+      ctx.translate(cx + tx, cy + ty);
       ctx.rotate((rotation * Math.PI) / 180);
       ctx.scale(zoom, zoom);
 
@@ -393,14 +398,10 @@ export function AddEditView({ editingBirthday, onBack, onSave, onDelete }) {
         drawHeight = 128 / imgRatio;
       }
       
-      const scaleFactor = 128 / 256;
-      const tx = offset.x * scaleFactor;
-      const ty = offset.y * scaleFactor;
-      
       ctx.drawImage(
         img,
-        -drawWidth / 2 + tx / zoom,
-        -drawHeight / 2 + ty / zoom,
+        -drawWidth / 2,
+        -drawHeight / 2,
         drawWidth,
         drawHeight
       );
@@ -765,9 +766,9 @@ export function AddEditView({ editingBirthday, onBack, onSave, onDelete }) {
               Adjust Photo
             </h3>
             
-            {/* Circular crop area */}
+            {/* Squircle crop area */}
             <div
-              className="w-64 h-64 rounded-full overflow-hidden border-4 border-white dark:border-[#222e45] shadow-lg relative bg-slate-900 cursor-move flex items-center justify-center touch-none select-none"
+              className="w-64 h-64 rounded-[32px] overflow-hidden border-4 border-white dark:border-[#222e45] shadow-lg relative bg-slate-900 cursor-move flex items-center justify-center touch-none select-none"
               onMouseDown={handlePointerDown}
               onMouseMove={handlePointerMove}
               onMouseUp={handlePointerUp}
@@ -787,8 +788,8 @@ export function AddEditView({ editingBirthday, onBack, onSave, onDelete }) {
                 }}
                 className="pointer-events-none select-none"
               />
-              {/* Circular guide outline overlay */}
-              <div className="absolute inset-0 rounded-full border-2 border-dashed border-blue-500/40 pointer-events-none"></div>
+              {/* Squircle guide outline overlay */}
+              <div className="absolute inset-0 rounded-[28px] border-2 border-dashed border-blue-500/40 pointer-events-none"></div>
             </div>
 
             <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 text-center uppercase tracking-wide">

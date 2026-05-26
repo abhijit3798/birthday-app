@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import useLocalStorage from './hooks/useLocalStorage';
 import ListView from './components/ListView';
 import DetailView from './components/DetailView';
@@ -94,6 +94,7 @@ export function App() {
   const [editingBirthday, setEditingBirthday] = useState(null);
   const [darkMode, setDarkMode] = useLocalStorage('birthday_dark_mode', false);
   const [toast, setToast] = useState(null);
+  const isPopStateChange = useRef(false);
 
   useEffect(() => {
     if (toast) {
@@ -116,6 +117,7 @@ export function App() {
   useEffect(() => {
     const handlePopState = (e) => {
       const targetView = e.state && e.state.view ? e.state.view : 'list';
+      isPopStateChange.current = true;
       setCurrentView(targetView);
     };
 
@@ -133,6 +135,11 @@ export function App() {
 
   // 2. Automatically push a new history state when currentView changes programmatically
   useEffect(() => {
+    if (isPopStateChange.current) {
+      isPopStateChange.current = false;
+      return;
+    }
+
     const currentHistState = window.history.state;
     const histView = currentHistState ? currentHistState.view : 'list';
 
@@ -342,15 +349,24 @@ export function App() {
     
     if (wasEditing) {
       setSelectedBirthday(dataWithTimestamp);
-      setCurrentView('detail');
+    }
+    
+    // Pop the Edit state cleanly off the browser history stack
+    if (window.history.state && window.history.length > 1) {
+      window.history.back();
     } else {
-      setCurrentView('list');
+      setCurrentView(wasEditing ? 'detail' : 'list');
     }
   };
 
   const handleDeleteBirthday = (id) => {
     setBirthdays((prev) => prev.filter((b) => b.id !== id));
-    setCurrentView('list');
+    // Pop both Edit and Detail states cleanly off the stack to return straight to list dashboard
+    if (window.history.state && window.history.length > 2) {
+      window.history.go(-2);
+    } else {
+      setCurrentView('list');
+    }
   };
 
   const handleEditSelect = (bday) => {
