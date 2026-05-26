@@ -210,16 +210,16 @@ export function App() {
       const title = `${contact.name}'s Birthday! 🎂`;
       let body = '';
       if (daysLeft === 0) {
-        body = `Today is ${contact.name}'s birthday! Wish them a wonderful day! 🎉`;
+        body = `Today is ${contact.name}'s birthday! 🎉`;
       } else if (daysLeft === 1) {
-        body = `Tomorrow is ${contact.name}'s birthday! Don't forget to prepare! 🎈`;
+        body = `Tomorrow is ${contact.name}'s birthday! 🎈`;
       } else {
         body = `${contact.name}'s birthday is in ${daysLeft} days! 🎁`;
       }
 
       if ('Notification' in window && Notification.permission === 'granted') {
         try {
-          if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+          if (navigator.serviceWorker) {
             navigator.serviceWorker.ready.then((registration) => {
               registration.showNotification(title, {
                 body,
@@ -227,6 +227,11 @@ export function App() {
                 vibrate: [200, 100, 200],
                 tag: `bday-reminder-${contact.id}`,
                 renotify: true
+              }).catch(() => {
+                new Notification(title, {
+                  body,
+                  icon: contact.image || '/favicon.svg'
+                });
               });
             });
           } else {

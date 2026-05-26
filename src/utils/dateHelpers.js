@@ -5,6 +5,14 @@
  */
 export function parseDate(dobString) {
   if (!dobString) return null;
+  const parts = dobString.split('-');
+  if (parts.length === 3) {
+    const y = parseInt(parts[0], 10);
+    const m = parseInt(parts[1], 10) - 1;
+    const d = parseInt(parts[2], 10);
+    const localDate = new Date(y, m, d);
+    return isNaN(localDate.getTime()) ? null : localDate;
+  }
   const d = new Date(dobString);
   return isNaN(d.getTime()) ? null : d;
 }
