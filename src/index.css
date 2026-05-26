@@ -1,0 +1,159 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+
+@theme {
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-headings: 'Plus Jakarta Sans', var(--font-sans);
+
+  --color-blue-50: #fff5f2;
+  --color-blue-500: #F2591D;
+  --color-blue-600: #C24717;
+
+
+  --animate-scale-in: scale-in 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  --animate-slide-up: slide-up 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  --animate-slide-in: slide-in 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  --animate-fade-in: fade-in 0.2s ease-out forwards;
+
+  @keyframes scale-in {
+    from {
+      opacity: 0;
+      transform: scale(0.96);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  @keyframes slide-up {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes slide-in {
+    from {
+      transform: translateX(100%);
+    }
+    to {
+      transform: translateX(0);
+    }
+  }
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.02);
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.12);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.25);
+}
+
+/* HTML5 and general layout defaults */
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: #f2f5fa;
+  color: #1a202c;
+  background-attachment: fixed;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* IOS Styling helper utilities */
+.ios-input {
+  background: transparent;
+  border: none;
+  border-bottom: 1.5px solid #e2e8f0;
+  border-radius: 0;
+  outline: none;
+  width: 100%;
+  padding: 10px 0;
+  font-size: 15px;
+  color: #1e293b;
+  transition: border-bottom-color 0.2s ease;
+}
+
+.ios-input:focus {
+  border-bottom-color: #F2591D;
+}
+
+.ios-input::placeholder {
+  color: #94a3b8;
+}
+
+/* IOS list card divider lines */
+.ios-divider {
+  border-bottom: 0.5px solid rgba(0, 0, 0, 0.08);
+}
+
+/* Custom styling for date input inner fields */
+input[type="date"]::-webkit-datetime-edit-text,
+input[type="date"]::-webkit-datetime-edit-month-field,
+input[type="date"]::-webkit-datetime-edit-day-field,
+input[type="date"]::-webkit-datetime-edit-year-field {
+  color: #94a3b8; /* slate-400 */
+}
+
+/* Hide scrollbar utility */
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-none {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+/* Dark Mode Overrides */
+.dark body {
+  background-color: #0b0f19;
+  color: #f8fafc;
+}
+
+.dark .ios-input {
+  border-bottom-color: #222e45;
+  color: #f1f5f9;
+}
+
+.dark .ios-input:focus {
+  border-bottom-color: #F2591D;
+}
+
+.dark .ios-input::placeholder {
+  color: #475569;
+}
+
+.dark .ios-divider {
+  border-bottom-color: #222e45;
+}
+
+
