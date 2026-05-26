@@ -168,4 +168,9 @@ input[type="date"]::-webkit-datetime-edit-year-field {
   border-bottom-color: #222e45;
 }
 
+/* iOS Safe Area Status Bar Offset */
+.safe-pt {
+  padding-top: calc(env(safe-area-inset-top, 0px) + 1.5rem) !important;
+}
+
 

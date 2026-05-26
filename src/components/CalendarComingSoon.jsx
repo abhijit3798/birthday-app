@@ -22,7 +22,7 @@ export function CalendarComingSoon({ onBack }) {
   return (
     <div className="w-full min-h-screen bg-[#f2f5fa] dark:bg-[#0b0f19] flex flex-col items-center animate-fade-in relative pb-10 select-none">
       
-      <div className="w-full max-w-[440px] px-4 pt-6 flex flex-col gap-6">
+      <div className="w-full max-w-[440px] px-4 safe-pt flex flex-col gap-6">
         
         {/* Navigation Header */}
         <header className="w-full flex justify-between items-center bg-white dark:bg-[#151c2c] border border-gray-100 dark:border-[#222e45] rounded-3xl p-3.5 shadow-sm">

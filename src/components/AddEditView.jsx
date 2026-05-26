@@ -476,7 +476,7 @@ export function AddEditView({ editingBirthday, onBack, onSave, onDelete }) {
         className="hidden"
       />
 
-      <div className="w-full max-w-[440px] px-4 pt-6 flex flex-col gap-5">
+      <div className="w-full max-w-[440px] px-4 safe-pt flex flex-col gap-5">
         
         {/* Navigation Header matching Image 1/2 */}
         <header className="w-full flex justify-between items-center bg-white dark:bg-[#151c2c] border border-gray-100 dark:border-[#222e45] rounded-3xl p-3.5 shadow-sm">

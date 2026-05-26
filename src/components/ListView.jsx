@@ -87,7 +87,7 @@ export function ListView({ birthdays, onSelect, onNavigate }) {
     <div className="w-full min-h-screen bg-[#f2f5fa] dark:bg-[#0b0f19] flex flex-col justify-between relative pb-24 animate-fade-in select-none">
       
       {/* Container */}
-      <div className="w-full max-w-[440px] mx-auto px-4 pt-6 flex flex-col gap-5">
+      <div className="w-full max-w-[440px] mx-auto px-4 safe-pt flex flex-col gap-5">
         
         {/* Header bar matching Image 5 */}
         <header className="flex justify-between items-center bg-white dark:bg-[#151c2c] border border-gray-100 dark:border-[#222e45] rounded-3xl p-4.5 shadow-sm">
