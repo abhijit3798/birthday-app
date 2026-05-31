@@ -33,7 +33,9 @@ export async function syncWithNative(birthdays, globalSettings) {
       leapYearDaysBefore: Number(globalSettings.leapYearDaysBefore) ?? 1
     };
 
-    console.log('⏰ Native Sync - Launching sync with', formattedBirthdays.length, 'birthdays');
+    console.log('⏰ Native Sync - Calling scheduleReminders with Birthdays Payload:', JSON.stringify(formattedBirthdays, null, 2));
+    console.log('⏰ Native Sync - Calling scheduleReminders with Global Settings Payload:', JSON.stringify(formattedSettings, null, 2));
+
     const result = await BirthdayReminder.scheduleReminders({
       birthdays: formattedBirthdays,
       globalSettings: formattedSettings

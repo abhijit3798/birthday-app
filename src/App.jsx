@@ -90,7 +90,13 @@ const getInitialBirthdays = () => {
 };
 
 export function App() {
-  const [birthdays, setBirthdays] = useLocalStorage('birthday_countdown_items', []);
+  const [birthdays, setBirthdays] = useLocalStorage('birthday_countdown_items', getInitialBirthdays());
+  const [globalSettings, setGlobalSettings] = useLocalStorage('birthday_reminders_settings', {
+    enabled: true,
+    daysBefore: 1,
+    notificationTime: '09:00',
+    leapYearDaysBefore: 1
+  });
   const [currentView, setCurrentView] = useState('list'); // 'list', 'detail', 'add', 'settings'
   const [selectedBirthday, setSelectedBirthday] = useState(null);
   const [editingBirthday, setEditingBirthday] = useState(null);
@@ -335,21 +341,14 @@ export function App() {
   }, [birthdays]);
 
   const handleSyncAlarms = () => {
-    try {
-      const globalSettings = JSON.parse(
-        localStorage.getItem('birthday_reminders_settings') ||
-        '{"enabled":true,"daysBefore":1,"notificationTime":"09:00","leapYearDaysBefore":1}'
-      );
-      syncWithNative(birthdays, globalSettings);
-    } catch (e) {
-      console.error('Error in handleSyncAlarms:', e);
-    }
+    syncWithNative(birthdays, globalSettings);
   };
 
-  // 4. Auto-Sync birthdays with native AlarmManager when list updates
+  // 4. Auto-Sync birthdays and globalSettings with native AlarmManager when list or settings update
   useEffect(() => {
+    console.log("🔄 React State Triggered Sync - Birthdays count:", birthdays.length);
     handleSyncAlarms();
-  }, [birthdays]);
+  }, [birthdays, globalSettings]);
 
   // 5. Check if app was launched via Notification Tap
   useEffect(() => {
@@ -535,7 +534,8 @@ export function App() {
           }}
           darkMode={darkMode}
           onToggleDarkMode={() => setDarkMode(prev => !prev)}
-          onSyncAlarms={handleSyncAlarms}
+          globalSettings={globalSettings}
+          onUpdateGlobalSettings={setGlobalSettings}
         />
       )}
 

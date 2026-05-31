@@ -4,13 +4,9 @@ import useLocalStorage from '../hooks/useLocalStorage';
 import { getReminderTriggerDate, formatTime12Hour } from '../utils/dateHelpers';
 import { getNativeDiagnostics, requestNativeNotificationPermission, requestNativeExactAlarmPermission, requestNativeBatteryBypass } from '../utils/nativeReminderHelper';
 
-export function SettingsView({ onBack, onNavigate, birthdays, deferredPrompt, isAppInstalled, onAppInstalled, darkMode, onToggleDarkMode, onSyncAlarms }) {
-  const [remindersSettings, setRemindersSettings] = useLocalStorage('birthday_reminders_settings', {
-    enabled: true,
-    daysBefore: 1,
-    notificationTime: '09:00',
-    leapYearDaysBefore: 1
-  });
+export function SettingsView({ onBack, onNavigate, birthdays, deferredPrompt, isAppInstalled, onAppInstalled, darkMode, onToggleDarkMode, globalSettings, onUpdateGlobalSettings }) {
+  const remindersSettings = globalSettings;
+  const setRemindersSettings = onUpdateGlobalSettings;
 
   const [diagnostics, setDiagnostics] = useState({
     notifications: true,
@@ -29,13 +25,6 @@ export function SettingsView({ onBack, onNavigate, birthdays, deferredPrompt, is
     window.addEventListener('focus', loadDiagnostics);
     return () => window.removeEventListener('focus', loadDiagnostics);
   }, []);
-
-  // Sync with native layer on settings change
-  useEffect(() => {
-    if (onSyncAlarms) {
-      onSyncAlarms();
-    }
-  }, [remindersSettings, onSyncAlarms]);
 
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [pickerHour, setPickerHour] = useState('09');
