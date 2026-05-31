@@ -75,7 +75,7 @@ export function DetailView({ birthday, onBack, onEdit, onUpdate, onNavigate }) {
 
 
   return (
-    <div className="w-full min-h-screen bg-[#f2f5fa] dark:bg-[#0b0f19] flex flex-col items-center animate-fade-in relative pb-10 select-none">
+    <div className="w-full min-h-screen bg-[#f2f5fa] dark:bg-[#0b0f19] flex flex-col items-center animate-fade-in relative safe-pb-container select-none">
       
       {/* Blue Header Section */}
       <div className="w-full bg-[#F2591D] text-white safe-pt pb-12 px-4 rounded-b-[40px] shadow-md flex flex-col items-center relative">

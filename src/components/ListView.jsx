@@ -84,7 +84,7 @@ export function ListView({ birthdays, onSelect, onNavigate }) {
   };
 
   return (
-    <div className="w-full min-h-screen bg-[#f2f5fa] dark:bg-[#0b0f19] flex flex-col justify-between relative pb-24 animate-fade-in select-none">
+    <div className="w-full min-h-screen bg-[#f2f5fa] dark:bg-[#0b0f19] flex flex-col justify-between relative safe-pb-list animate-fade-in select-none">
       
       {/* Container */}
       <div className="w-full max-w-[440px] mx-auto px-4 safe-pt flex flex-col gap-5">
@@ -213,7 +213,7 @@ export function ListView({ birthdays, onSelect, onNavigate }) {
 
       {/* Floating search pill bottom bar matching Image 5 */}
       {safeBirthdays.length > 0 && (
-        <div className="fixed bottom-6 left-0 right-0 px-4 z-40 flex justify-center pointer-events-none">
+        <div className="fixed safe-bottom-fixed left-0 right-0 px-4 z-40 flex justify-center pointer-events-none">
           <div className="w-full max-w-[400px] bg-white/90 dark:bg-[#151c2c]/90 backdrop-blur-md border border-gray-200/50 dark:border-[#222e45] rounded-full py-2.5 px-4 shadow-lg flex items-center gap-2 pointer-events-auto">
             <Search size={18} className="text-slate-400 dark:text-slate-500 shrink-0" />
             <input

@@ -20,7 +20,7 @@ export function CalendarComingSoon({ onBack }) {
   ];
 
   return (
-    <div className="w-full min-h-screen bg-[#f2f5fa] dark:bg-[#0b0f19] flex flex-col items-center animate-fade-in relative pb-10 select-none">
+    <div className="w-full min-h-screen bg-[#f2f5fa] dark:bg-[#0b0f19] flex flex-col items-center animate-fade-in relative safe-pb-container select-none">
       
       <div className="w-full max-w-[440px] px-4 safe-pt flex flex-col gap-6">
         

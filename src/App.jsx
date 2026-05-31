@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { App as CapacitorApp } from '@capacitor/app';
 import useLocalStorage from './hooks/useLocalStorage';
 import ListView from './components/ListView';
 import DetailView from './components/DetailView';
@@ -11,7 +12,7 @@ import { getReminderTriggerDate } from './utils/dateHelpers';
 
 const getInitialBirthdays = () => {
   const today = new Date();
-  
+
   // Safe local date formatting helper (prevents timezone shifts from toISOString)
   const formatLocal = (d) => {
     const y = d.getFullYear();
@@ -135,6 +136,16 @@ export function App() {
 
   // 2. Automatically push a new history state when currentView changes programmatically
   useEffect(() => {
+    if (currentView === 'list') {
+      window.history.replaceState(
+        { view: 'list' },
+        '',
+        window.location.pathname
+      );
+    }
+  }, [currentView]);
+
+  useEffect(() => {
     if (isPopStateChange.current) {
       isPopStateChange.current = false;
       return;
@@ -156,16 +167,48 @@ export function App() {
     }
   };
 
+  useEffect(() => {
+    let listener;
+
+    const setupBackButton = async () => {
+      listener = await CapacitorApp.addListener(
+        'backButton',
+        ({ canGoBack }) => {
+
+          console.log("Current View:", currentView);
+          console.log("Can Go Back:", canGoBack);
+
+          // Add/Edit/Detail pages
+          if (currentView !== 'list') {
+            window.history.back();
+            return;
+          }
+
+          // Dashboard page
+          CapacitorApp.exitApp();
+        }
+      );
+    };
+
+    setupBackButton();
+
+    return () => {
+      if (listener) {
+        listener.remove();
+      }
+    };
+  }, [currentView]);
+
   // 3. Proactive Notification Scheduler
   useEffect(() => {
     const checkReminders = () => {
       try {
         const now = new Date();
         const globalSettings = JSON.parse(
-          localStorage.getItem('birthday_reminders_settings') || 
+          localStorage.getItem('birthday_reminders_settings') ||
           '{"enabled":true,"daysBefore":1,"notificationTime":"09:00","leapYearDaysBefore":1}'
         );
-        
+
         if (!globalSettings.enabled) return;
 
         const sentReminders = JSON.parse(localStorage.getItem('birthday_sent_reminders') || '{}');
@@ -182,10 +225,10 @@ export function App() {
 
           // Get active timing (custom override vs global fallback)
           const isCustom = contact.customReminders && contact.customReminders.enabled;
-          const timeStr = isCustom 
-            ? (contact.customReminders.notificationTime || '09:00') 
+          const timeStr = isCustom
+            ? (contact.customReminders.notificationTime || '09:00')
             : (globalSettings.notificationTime || '09:00');
-            
+
           const [hours, minutes] = timeStr.split(':').map(Number);
 
           const triggerTime = new Date(
@@ -204,7 +247,7 @@ export function App() {
 
           const uniqueKey = `${contact.id}_${triggerTime.getFullYear()}_${triggerTime.getMonth()}_${triggerTime.getDate()}_${hours}_${minutes}`;
 
-          console.log(`⏰ Scheduler - [${contact.name}]: now: ${now.getHours()}:${now.getMinutes()}:${now.getSeconds()}, trigger: ${hours}:${minutes}, diff: ${Math.round(diffMs/1000)}s, valid: ${isValidWindow}, sent: ${!!sentReminders[uniqueKey]}`);
+          console.log(`⏰ Scheduler - [${contact.name}]: now: ${now.getHours()}:${now.getMinutes()}:${now.getSeconds()}, trigger: ${hours}:${minutes}, diff: ${Math.round(diffMs / 1000)}s, valid: ${isValidWindow}, sent: ${!!sentReminders[uniqueKey]}`);
 
 
 
@@ -212,7 +255,7 @@ export function App() {
             // Trigger!
             const daysBefore = isCustom ? contact.customReminders.daysBefore : (globalSettings.daysBefore ?? 1);
             triggerNotification(contact, daysBefore);
-            
+
             // Mark as sent
             sentReminders[uniqueKey] = now.getTime();
             updatedSent = true;
@@ -294,7 +337,7 @@ export function App() {
   useEffect(() => {
     try {
       const globalSettings = JSON.parse(
-        localStorage.getItem('birthday_reminders_settings') || 
+        localStorage.getItem('birthday_reminders_settings') ||
         '{"enabled":true,"daysBefore":1,"notificationTime":"09:00","leapYearDaysBefore":1}'
       );
       if (globalSettings.enabled && 'Notification' in window && Notification.permission === 'default') {
@@ -350,11 +393,11 @@ export function App() {
         return [...prev, dataWithTimestamp];
       }
     });
-    
+
     if (wasEditing) {
       setSelectedBirthday(dataWithTimestamp);
     }
-    
+
     // Pop the Edit state cleanly off the browser history stack
     if (window.history.state && window.history.length > 1) {
       window.history.back();
@@ -400,7 +443,7 @@ export function App() {
     <div className="w-full min-h-screen bg-[#f2f5fa] relative overflow-x-hidden">
       {/* Premium Glassmorphic In-App Toast Notification */}
       {toast && (
-        <div 
+        <div
           className="fixed top-4 left-1/2 -translate-x-1/2 z-[9999] w-[90%] max-w-[380px] bg-gradient-to-r from-[#F2591D] to-[#ff783e] text-white p-4 rounded-2xl shadow-[0_15px_30px_-5px_rgba(242,89,29,0.3)] border border-white/25 flex items-start gap-3.5 animate-slide-down cursor-pointer select-none"
           onClick={() => setToast(null)}
         >
@@ -411,7 +454,7 @@ export function App() {
             <span className="text-sm font-black tracking-tight leading-none">{toast.title}</span>
             <span className="text-xs text-white/90 font-semibold mt-1 leading-snug">{toast.body}</span>
           </div>
-          <button 
+          <button
             onClick={(e) => {
               e.stopPropagation();
               setToast(null);
@@ -433,7 +476,7 @@ export function App() {
           }}
         />
       )}
-      
+
       {currentView === 'detail' && activeBirthdayInDetail && (
         <DetailView
           birthday={activeBirthdayInDetail}

@@ -182,7 +182,20 @@ input[type="date"]::-webkit-datetime-edit-year-field {
   border-bottom-color: #222e45;
 }
 
-/* iOS Safe Area Status Bar Offset */
+/* Safe Area Status Bar Offset */
 .safe-pt {
-  padding-top: calc(env(safe-area-inset-top, 0px) + 1.5rem) !important;
+  padding-top: calc(var(--safe-area-inset-top, env(safe-area-inset-top, 0px)) + 1.5rem) !important;
+}
+
+/* Safe Area Bottom Offset Utility Classes */
+.safe-pb-container {
+  padding-bottom: calc(var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)) + 2.5rem) !important;
+}
+
+.safe-pb-list {
+  padding-bottom: calc(var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)) + 6rem) !important;
+}
+
+.safe-bottom-fixed {
+  bottom: calc(var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)) + 1.5rem) !important;
 }
