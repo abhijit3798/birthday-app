@@ -599,20 +599,13 @@ export function AddEditView({ editingBirthday, onBack, onSave, onDelete }) {
       <div className="w-full max-w-[440px] px-4 safe-pt flex flex-col gap-5">
         
         {/* Navigation Header matching Image 1/2 */}
-        <header className="w-full flex justify-between items-center bg-white dark:bg-[#151c2c] border border-gray-100 dark:border-[#222e45] rounded-3xl p-3.5 shadow-sm">
+        <header className="w-full flex items-center bg-white dark:bg-[#151c2c] border border-gray-100 dark:border-[#222e45] rounded-3xl p-3.5 shadow-sm">
           <button
             onClick={onBack}
             className="p-2 hover:bg-gray-50 dark:hover:bg-[#1e293b] rounded-full transition-all text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-100 cursor-pointer flex items-center justify-center"
             aria-label="Back"
           >
             <ArrowLeft size={20} />
-          </button>
-          
-          <button
-            onClick={handleFormSubmit}
-            className="px-5 py-2 bg-gradient-to-r from-blue-500 to-[#F2591D] text-white rounded-full text-xs font-bold shadow-md hover:brightness-110 active:scale-95 transition-all cursor-pointer border border-white/10"
-          >
-            Save
           </button>
         </header>
 
@@ -776,17 +769,26 @@ export function AddEditView({ editingBirthday, onBack, onSave, onDelete }) {
 
           </form>
 
-          {editingBirthday && (
-            <div className="w-full pt-4 border-t border-slate-100 dark:border-[#222e45] mt-6">
+          {/* Form Action Buttons */}
+          <div className="w-full mt-6 flex flex-col gap-4">
+            <button
+              type="button"
+              onClick={handleFormSubmit}
+              className="w-full py-3.5 bg-gradient-to-r from-blue-500 to-[#F2591D] text-white rounded-2xl text-xs font-black shadow-md hover:brightness-110 active:scale-95 transition-all cursor-pointer text-center uppercase tracking-wider border border-white/10"
+            >
+              Save Birthday
+            </button>
+
+            {editingBirthday && (
               <button
                 type="button"
                 onClick={handleDeleteClick}
-                className="w-full py-3 bg-red-50 dark:bg-red-950/15 hover:bg-red-100/80 dark:hover:bg-red-950/30 active:bg-red-200 text-red-600 rounded-xl text-xs font-black transition-all active:scale-95 cursor-pointer text-center uppercase tracking-wider border border-red-200/40 dark:border-red-900/30"
+                className="w-full py-3.5 bg-red-50 dark:bg-red-950/15 hover:bg-red-100/80 dark:hover:bg-red-950/30 active:bg-red-200 text-red-600 rounded-xl text-xs font-black transition-all active:scale-95 cursor-pointer text-center uppercase tracking-wider border border-red-200/40 dark:border-red-900/30"
               >
                 Delete Birthday
               </button>
-            </div>
-          )}
+            )}
+          </div>
 
         </div>
       </div>

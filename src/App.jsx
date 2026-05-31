@@ -7,86 +7,13 @@ import AddEditView from './components/AddEditView';
 import SettingsView from './components/SettingsView';
 import ProView from './components/ProView';
 import PrivacyPolicy from './components/PrivacyPolicy';
+import AboutView from './components/AboutView';
 import CalendarComingSoon from './components/CalendarComingSoon';
 import { getReminderTriggerDate } from './utils/dateHelpers';
 import { syncWithNative, requestNativeNotificationPermission, checkLaunchNotification, getAndClearNativeDelivered, isAndroid } from './utils/nativeReminderHelper';
 
 const getInitialBirthdays = () => {
-  const today = new Date();
-
-  // Safe local date formatting helper (prevents timezone shifts from toISOString)
-  const formatLocal = (d) => {
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const r = String(d.getDate()).padStart(2, '0');
-    return `${y}-${m}-${r}`;
-  };
-
-  const bToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-  const bTomorrow = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
-  const bFourDays = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 4);
-  const bEightDays = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 8);
-  const bTwentyDays = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 20);
-
-  // Seed birthdates matching the screenshot ages/milestones
-  const d1 = new Date(1995, bToday.getMonth(), bToday.getDate());
-  const d2 = new Date(1995, bTomorrow.getMonth(), bTomorrow.getDate());
-  const d3 = new Date(1993, bFourDays.getMonth(), bFourDays.getDate());
-  const d4 = new Date(1990, bEightDays.getMonth(), bEightDays.getDate());
-  const d5 = new Date(1995, bTwentyDays.getMonth(), bTwentyDays.getDate());
-
-  return [
-    {
-      id: 'mock-1',
-      name: 'Prasad Parkhe',
-      date: formatLocal(d1),
-      category: 'friends',
-      hideYear: false,
-      phoneNumber: '+1-555-0199',
-      emailAddress: 'prasad@example.com',
-      notes: 'Likes chess and custom black pens.'
-    },
-    {
-      id: 'mock-2',
-      name: 'Suresh - Komal Kardile',
-      date: formatLocal(d2),
-      category: 'family',
-      hideYear: false,
-      phoneNumber: '+1-555-0255',
-      emailAddress: 'suresh@example.com',
-      notes: 'Anniversary celebration.'
-    },
-    {
-      id: 'mock-3',
-      name: 'Bappu Sir',
-      date: formatLocal(d3),
-      category: 'work',
-      hideYear: false,
-      phoneNumber: '+1-555-0388',
-      emailAddress: 'bappu@example.com',
-      notes: 'Academic coordinator.'
-    },
-    {
-      id: 'mock-4',
-      name: 'Dilip Adsul',
-      date: formatLocal(d4),
-      category: 'work',
-      hideYear: false,
-      phoneNumber: '',
-      emailAddress: '',
-      notes: ''
-    },
-    {
-      id: 'mock-5',
-      name: 'Utkarsha Gaware',
-      date: formatLocal(d5),
-      category: 'friends',
-      hideYear: false,
-      phoneNumber: '',
-      emailAddress: '',
-      notes: ''
-    }
-  ];
+  return [];
 };
 
 export function App() {
@@ -660,6 +587,12 @@ export function App() {
 
       {currentView === 'privacy' && (
         <PrivacyPolicy
+          onBack={() => goBack('settings')}
+        />
+      )}
+
+      {currentView === 'about' && (
+        <AboutView
           onBack={() => goBack('settings')}
         />
       )}

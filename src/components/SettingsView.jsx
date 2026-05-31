@@ -509,6 +509,21 @@ export function SettingsView({ onBack, onNavigate, birthdays, deferredPrompt, is
           </button>
         </div>
 
+        {/* About Section */}
+        <div className="bg-white dark:bg-[#151c2c] border border-gray-100 dark:border-[#222e45] rounded-[28px] p-4.5 shadow-sm flex flex-col">
+          <h3 className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3 px-1">
+            About
+          </h3>
+          
+          <button
+            onClick={() => onNavigate('about')}
+            className="flex justify-between items-center py-3 hover:bg-gray-50/50 dark:hover:bg-[#1e293b]/50 px-1 rounded-xl transition-all cursor-pointer text-left"
+          >
+            <span className="text-sm font-bold text-slate-700 dark:text-slate-200">About App</span>
+            <ChevronRight size={16} className="text-slate-400 dark:text-slate-400" />
+          </button>
+        </div>
+
         {/* 4. PWA Installation Option (Only shown if not installed and browser triggers beforeinstallprompt) */}
         {!isAppInstalled && deferredPrompt && (
           <div className="bg-white dark:bg-[#151c2c] border border-gray-100 dark:border-[#222e45] rounded-[28px] p-4.5 shadow-sm flex flex-col mt-1 animate-fade-in">

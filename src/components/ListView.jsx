@@ -87,7 +87,7 @@ export function ListView({ birthdays, onSelect, onNavigate }) {
     <div className="w-full min-h-screen bg-[#f2f5fa] dark:bg-[#0b0f19] flex flex-col justify-between relative safe-pb-list animate-fade-in select-none">
       
       {/* Container */}
-      <div className="w-full max-w-[440px] mx-auto px-4 safe-pt flex flex-col gap-5">
+      <div className="w-full max-w-[440px] mx-auto px-4 safe-pt flex flex-col gap-5 flex-1 pb-6">
         
         {/* Header bar matching Image 5 */}
         <header className="flex justify-between items-center bg-white dark:bg-[#151c2c] border border-gray-100 dark:border-[#222e45] rounded-3xl p-4.5 shadow-sm">
@@ -113,9 +113,9 @@ export function ListView({ birthdays, onSelect, onNavigate }) {
         </header>
 
         {/* Grouped Birthdays list in chronological upcoming order */}
-        <div className="flex flex-col gap-6">
+        <div className={`flex flex-col gap-6 ${safeBirthdays.length === 0 ? 'flex-1 justify-center' : ''}`}>
           {safeBirthdays.length === 0 ? (
-            <div className="text-center py-12 px-6 bg-white dark:bg-[#151c2c] border border-gray-100/50 dark:border-[#222e45]/60 rounded-[32px] shadow-sm relative overflow-hidden group min-h-[300px] flex flex-col items-center justify-center">
+            <div className="text-center py-12 px-6 bg-white dark:bg-[#151c2c] border border-gray-100/50 dark:border-[#222e45]/60 rounded-[32px] shadow-sm relative overflow-hidden group flex-1 flex flex-col items-center justify-center min-h-[350px]">
               {/* Floating Balloon and Sparkle Emojis with slow bounce animations */}
               <div className="absolute top-4 left-6 text-3xl animate-bounce" style={{ animationDelay: '0.2s', animationDuration: '3s' }}>🎈</div>
               <div className="absolute top-10 right-8 text-2xl animate-bounce" style={{ animationDelay: '0.8s', animationDuration: '4s' }}>✨</div>
@@ -139,8 +139,11 @@ export function ListView({ birthdays, onSelect, onNavigate }) {
 
               {/* Message Content */}
               <h2 className="text-xl font-extrabold text-slate-800 dark:text-slate-100 font-headings">
-                No Birthdays Saved Yet! 🎂
+                🎂 No Birthday Saved Yet!
               </h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400 font-semibold mt-2.5 leading-relaxed px-1 max-w-[280px]">
+                Tap the + button to add your first birthday reminder.
+              </p>
             </div>
           ) : groupedByMonthList.length > 0 ? (
             groupedByMonthList.map((group) => (
