@@ -181,16 +181,11 @@ public class RescheduleWorker extends Worker {
                 );
 
                 try {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !alarmManager.canScheduleExactAlarms()) {
-                        // Non-exact fallback to prevent crashes if permission is missing
-                        alarmManager.set(AlarmManager.RTC_WAKEUP, triggerTime.getTimeInMillis(), pendingIntent);
-                    } else {
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                            alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerTime.getTimeInMillis(), pendingIntent);
-                        } else {
-                            alarmManager.setExact(AlarmManager.RTC_WAKEUP, triggerTime.getTimeInMillis(), pendingIntent);
-                        }
-                    }
+                    alarmManager.set(
+                            AlarmManager.RTC_WAKEUP,
+                            triggerTime.getTimeInMillis(),
+                            pendingIntent
+                    );
                     newlyScheduled.add(id);
                     Log.d(TAG, "Scheduled alarm for " + name + " (ID: " + id + ") at: " + triggerTime.getTime().toString() + " (Age: " + age + ")");
                 } catch (SecurityException se) {
