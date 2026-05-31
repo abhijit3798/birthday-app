@@ -9,6 +9,7 @@ import ProView from './components/ProView';
 import PrivacyPolicy from './components/PrivacyPolicy';
 import CalendarComingSoon from './components/CalendarComingSoon';
 import { getReminderTriggerDate } from './utils/dateHelpers';
+import { syncWithNative, requestNativeNotificationPermission, checkLaunchNotification } from './utils/nativeReminderHelper';
 
 const getInitialBirthdays = () => {
   const today = new Date();
@@ -333,19 +334,39 @@ export function App() {
     return () => clearInterval(intervalId);
   }, [birthdays]);
 
-  // 4. Request notification permission on startup if global reminders are enabled
-  useEffect(() => {
+  const handleSyncAlarms = () => {
     try {
       const globalSettings = JSON.parse(
         localStorage.getItem('birthday_reminders_settings') ||
         '{"enabled":true,"daysBefore":1,"notificationTime":"09:00","leapYearDaysBefore":1}'
       );
-      if (globalSettings.enabled && 'Notification' in window && Notification.permission === 'default') {
-        Notification.requestPermission();
-      }
+      syncWithNative(birthdays, globalSettings);
     } catch (e) {
-      console.log('Error prompting initial notification permission:', e);
+      console.error('Error in handleSyncAlarms:', e);
     }
+  };
+
+  // 4. Auto-Sync birthdays with native AlarmManager when list updates
+  useEffect(() => {
+    handleSyncAlarms();
+  }, [birthdays]);
+
+  // 5. Check if app was launched via Notification Tap
+  useEffect(() => {
+    if (birthdays && birthdays.length > 0) {
+      checkLaunchNotification((birthdayId) => {
+        const target = birthdays.find(b => b.id === birthdayId);
+        if (target) {
+          setSelectedBirthday(target);
+          setCurrentView('detail');
+        }
+      });
+    }
+  }, [birthdays]);
+
+  // 6. Request native notification permissions on startup
+  useEffect(() => {
+    requestNativeNotificationPermission();
   }, []);
 
 
@@ -514,6 +535,7 @@ export function App() {
           }}
           darkMode={darkMode}
           onToggleDarkMode={() => setDarkMode(prev => !prev)}
+          onSyncAlarms={handleSyncAlarms}
         />
       )}
 

@@ -2,14 +2,40 @@ import { useState, useEffect } from 'react';
 import { ArrowLeft, ChevronRight, Download, ChevronUp, ChevronDown } from 'lucide-react';
 import useLocalStorage from '../hooks/useLocalStorage';
 import { getReminderTriggerDate, formatTime12Hour } from '../utils/dateHelpers';
+import { getNativeDiagnostics, requestNativeNotificationPermission, requestNativeExactAlarmPermission, requestNativeBatteryBypass } from '../utils/nativeReminderHelper';
 
-export function SettingsView({ onBack, onNavigate, birthdays, deferredPrompt, isAppInstalled, onAppInstalled, darkMode, onToggleDarkMode }) {
+export function SettingsView({ onBack, onNavigate, birthdays, deferredPrompt, isAppInstalled, onAppInstalled, darkMode, onToggleDarkMode, onSyncAlarms }) {
   const [remindersSettings, setRemindersSettings] = useLocalStorage('birthday_reminders_settings', {
     enabled: true,
     daysBefore: 1,
     notificationTime: '09:00',
     leapYearDaysBefore: 1
   });
+
+  const [diagnostics, setDiagnostics] = useState({
+    notifications: true,
+    exactAlarms: true,
+    batteryOptimization: true,
+    isNative: false
+  });
+
+  const loadDiagnostics = async () => {
+    const data = await getNativeDiagnostics();
+    setDiagnostics(data);
+  };
+
+  useEffect(() => {
+    loadDiagnostics();
+    window.addEventListener('focus', loadDiagnostics);
+    return () => window.removeEventListener('focus', loadDiagnostics);
+  }, []);
+
+  // Sync with native layer on settings change
+  useEffect(() => {
+    if (onSyncAlarms) {
+      onSyncAlarms();
+    }
+  }, [remindersSettings, onSyncAlarms]);
 
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [pickerHour, setPickerHour] = useState('09');
@@ -175,6 +201,88 @@ export function SettingsView({ onBack, onNavigate, birthdays, deferredPrompt, is
             </div>
           </div>
         </div>
+
+        {/* Native Android Diagnostics Panel (only visible on native Android platform) */}
+        {diagnostics.isNative && (
+          <div className="bg-white dark:bg-[#151c2c] border border-gray-100 dark:border-[#222e45] rounded-[28px] p-4.5 shadow-sm flex flex-col animate-fade-in">
+            <h3 className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3.5 px-1">
+              Notification Diagnostics
+            </h3>
+            
+            <div className="flex flex-col gap-3">
+              {/* 1. System Notifications Status */}
+              <div className="flex justify-between items-center py-1.5 px-1 border-b border-slate-50 dark:border-[#1e293b] pb-2.5">
+                <div className="flex flex-col">
+                  <span className="text-xs font-black text-slate-700 dark:text-slate-200">System Notifications</span>
+                  <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 mt-0.5">Required for alerts</span>
+                </div>
+                {diagnostics.notifications ? (
+                  <span className="px-3 py-1 bg-green-500/10 dark:bg-green-500/20 text-green-500 rounded-full text-[10px] font-black uppercase tracking-wider">
+                    Enabled
+                  </span>
+                ) : (
+                  <button
+                    onClick={async () => {
+                      const granted = await requestNativeNotificationPermission();
+                      if (!granted) {
+                        alert("To receive reminders, please enable notifications inside the system settings page.");
+                      }
+                      loadDiagnostics();
+                    }}
+                    className="px-3 py-1.5 bg-[#F2591D] text-white rounded-xl text-[9px] font-black uppercase tracking-wider cursor-pointer shadow-sm active:scale-95 transition-all"
+                  >
+                    Enable
+                  </button>
+                )}
+              </div>
+
+              {/* 2. Exact Alarms Status */}
+              <div className="flex justify-between items-center py-1.5 px-1 border-b border-slate-50 dark:border-[#1e293b] pb-2.5">
+                <div className="flex flex-col">
+                  <span className="text-xs font-black text-slate-700 dark:text-slate-200">Exact Reminders</span>
+                  <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 mt-0.5">Fires exactly on time</span>
+                </div>
+                {diagnostics.exactAlarms ? (
+                  <span className="px-3 py-1 bg-green-500/10 dark:bg-green-500/20 text-green-500 rounded-full text-[10px] font-black uppercase tracking-wider">
+                    Allowed
+                  </span>
+                ) : (
+                  <button
+                    onClick={async () => {
+                      await requestNativeExactAlarmPermission();
+                      alert("Please enable the 'Allow setting exact alarms' permission in the system settings screen that opens.");
+                    }}
+                    className="px-3 py-1.5 bg-amber-500 text-white rounded-xl text-[9px] font-black uppercase tracking-wider cursor-pointer shadow-sm active:scale-95 transition-all"
+                  >
+                    Configure
+                  </button>
+                )}
+              </div>
+
+              {/* 3. Battery Optimization Status */}
+              <div className="flex justify-between items-center py-1.5 px-1">
+                <div className="flex flex-col">
+                  <span className="text-xs font-black text-slate-700 dark:text-slate-200">Battery Priority</span>
+                  <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 mt-0.5">Resilience in background</span>
+                </div>
+                {diagnostics.batteryOptimization ? (
+                  <span className="px-3 py-1 bg-green-500/10 dark:bg-green-500/20 text-green-500 rounded-full text-[10px] font-black uppercase tracking-wider">
+                    Optimal
+                  </span>
+                ) : (
+                  <button
+                    onClick={async () => {
+                      await requestNativeBatteryBypass();
+                    }}
+                    className="px-3 py-1.5 bg-amber-500 text-white rounded-xl text-[9px] font-black uppercase tracking-wider cursor-pointer shadow-sm active:scale-95 transition-all"
+                  >
+                    Optimize
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* 2. Leap Year Settings Panel */}
         <div className="bg-white dark:bg-[#151c2c] border border-gray-100 dark:border-[#222e45] rounded-[28px] p-4.5 shadow-sm flex flex-col">
