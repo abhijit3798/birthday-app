@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ArrowLeft, MessageSquare, Phone, Mail, Calendar, ChevronRight, ChevronUp, ChevronDown } from 'lucide-react';
 import { getNextBirthday, getAgeInfo, formatTime12Hour } from '../utils/dateHelpers';
 import { CakeIcon } from './CakeIcon';
@@ -49,6 +49,59 @@ export function DetailView({ birthday, onBack, onEdit, onUpdate, onNavigate }) {
     notificationTime: '09:00',
     leapYearDaysBefore: 1
   };
+
+  const [customDaysBeforeInput, setCustomDaysBeforeInput] = useState(String(customReminders.daysBefore ?? 1));
+
+  useEffect(() => {
+    setCustomDaysBeforeInput(String(customReminders.daysBefore ?? 1));
+  }, [customReminders.daysBefore]);
+
+  const handleCustomDaysBeforeChange = (e) => {
+    const rawVal = e.target.value;
+    const cleaned = rawVal.replace(/[^0-9]/g, '');
+    setCustomDaysBeforeInput(cleaned);
+
+    if (cleaned !== '') {
+      const num = parseInt(cleaned, 10);
+      if (num >= 0 && num <= 365) {
+        onUpdate({
+          ...birthday,
+          customReminders: {
+            ...customReminders,
+            daysBefore: num
+          }
+        });
+      }
+    }
+  };
+
+  const handleCustomDaysBeforeBlur = () => {
+    let finalVal = customReminders.daysBefore ?? 1;
+    
+    if (customDaysBeforeInput !== '') {
+      const num = parseInt(customDaysBeforeInput, 10);
+      if (num < 0) {
+        finalVal = 0;
+      } else if (num > 365) {
+        finalVal = 365;
+      } else {
+        finalVal = num;
+      }
+    } else {
+      finalVal = customReminders.daysBefore ?? 1;
+    }
+    
+    setCustomDaysBeforeInput(String(finalVal));
+    onUpdate({
+      ...birthday,
+      customReminders: {
+        ...customReminders,
+        daysBefore: finalVal
+      }
+    });
+  };
+
+
 
   const today = new Date();
   const nextBday = getNextBirthday(date, today);
@@ -243,20 +296,12 @@ export function DetailView({ birthday, onBack, onEdit, onUpdate, onNavigate }) {
                   <span className="text-sm font-bold text-slate-700 dark:text-slate-200">Send Reminder</span>
                   <div className="flex items-center gap-2">
                     <input
-                      type="number"
-                      min="0"
-                      max="365"
-                      value={customReminders.daysBefore}
-                      onChange={(e) => {
-                        const val = Math.min(365, Math.max(0, parseInt(e.target.value) || 0));
-                        onUpdate({
-                          ...birthday,
-                          customReminders: {
-                            ...customReminders,
-                            daysBefore: val
-                          }
-                        });
-                      }}
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      value={customDaysBeforeInput}
+                      onChange={handleCustomDaysBeforeChange}
+                      onBlur={handleCustomDaysBeforeBlur}
                       className="w-16 bg-slate-50 dark:bg-[#0c1220] border border-slate-200 dark:border-[#222e45] rounded-xl px-2 py-1 text-sm font-bold text-slate-700 dark:text-slate-200 text-center focus:outline-none focus:border-[#F2591D]"
                     />
                     <span className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Days Before</span>

@@ -12,6 +12,7 @@ import android.os.PowerManager;
 import android.provider.Settings;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
+import com.starklabsai.birthdayreminder.R;
 
 public class NotificationHelper {
 
@@ -85,7 +86,7 @@ public class NotificationHelper {
         }
 
         NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID)
-                .setSmallIcon(android.R.drawable.ic_dialog_info) // System fallback or app launch icon
+                .setSmallIcon(R.drawable.ic_notification) // Dedicated monochrome white silhouette icon (Issue 3)
                 .setContentTitle(title)
                 .setContentText(message.replace("\n", " ")) // Inline preview
                 .setStyle(new NotificationCompat.BigTextStyle().bigText(message))
@@ -96,14 +97,6 @@ public class NotificationHelper {
                 .setContentIntent(pendingIntent)
                 .setGroup(GROUP_KEY);
 
-        // Try getting app launcher icon
-        try {
-            int iconId = context.getApplicationInfo().icon;
-            if (iconId != 0) {
-                builder.setSmallIcon(iconId);
-            }
-        } catch (Exception ignored) {}
-
         NotificationManagerCompat notificationManager = NotificationManagerCompat.from(context);
 
         // Post the individual notification
@@ -112,20 +105,13 @@ public class NotificationHelper {
 
             // Post/Update Group Summary Notification
             NotificationCompat.Builder summaryBuilder = new NotificationCompat.Builder(context, CHANNEL_ID)
-                    .setSmallIcon(android.R.drawable.ic_dialog_info)
+                    .setSmallIcon(R.drawable.ic_notification) // Dedicated monochrome white silhouette icon
                     .setContentTitle("🎂 Birthday Reminders")
                     .setContentText("You have upcoming birthdays")
                     .setPriority(NotificationCompat.PRIORITY_HIGH)
                     .setGroup(GROUP_KEY)
                     .setGroupSummary(true)
                     .setAutoCancel(true);
-
-            try {
-                int iconId = context.getApplicationInfo().icon;
-                if (iconId != 0) {
-                    summaryBuilder.setSmallIcon(iconId);
-                }
-            } catch (Exception ignored) {}
 
             notificationManager.notify(SUMMARY_ID, summaryBuilder.build());
         } catch (SecurityException e) {

@@ -1,6 +1,7 @@
 package com.starklabsai.birthdayreminder;
 
 import android.content.Context;
+import android.util.Log;
 import android.content.SharedPreferences;
 import android.os.Build;
 import androidx.core.app.ActivityCompat;
@@ -10,6 +11,9 @@ import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
+import java.util.Set;
+import java.util.HashSet;
+
 
 @CapacitorPlugin(name = "BirthdayReminder")
 public class BirthdayReminderPlugin extends Plugin {
@@ -18,6 +22,9 @@ public class BirthdayReminderPlugin extends Plugin {
     public void scheduleReminders(PluginCall call) {
         JSArray birthdays = call.getArray("birthdays");
         JSObject globalSettings = call.getObject("globalSettings");
+        Log.d("BirthdayReminder", "scheduleReminders called");
+        Log.d("BirthdayReminder", "Birthdays = " + birthdays);
+        Log.d("BirthdayReminder", "Global Settings = " + globalSettings);
 
         if (birthdays == null || globalSettings == null) {
             call.reject("Missing required parameters: birthdays or globalSettings");
@@ -98,5 +105,27 @@ public class BirthdayReminderPlugin extends Plugin {
         JSObject ret = new JSObject();
         ret.put("birthdayId", birthdayId != null ? birthdayId : "");
         call.resolve(ret);
+    }
+
+    @PluginMethod
+    public void getAndClearDeliveredNotifications(PluginCall call) {
+        try {
+            SharedPreferences prefs = getContext().getSharedPreferences("BirthdayReminderPrefs", Context.MODE_PRIVATE);
+            Set<String> delivered = prefs.getStringSet("delivered_keys", new HashSet<String>());
+            
+            JSArray arr = new JSArray();
+            for (String key : delivered) {
+                arr.put(key);
+            }
+            
+            // Clear the delivered set from native storage to keep it optimal
+            prefs.edit().remove("delivered_keys").apply();
+            
+            JSObject ret = new JSObject();
+            ret.put("delivered", arr);
+            call.resolve(ret);
+        } catch (Exception e) {
+            call.reject("Failed to get and clear delivered notifications: " + e.getMessage(), e);
+        }
     }
 }

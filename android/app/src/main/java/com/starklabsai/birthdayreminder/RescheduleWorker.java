@@ -53,6 +53,9 @@ public class RescheduleWorker extends Worker {
             return;
         }
 
+        // Clear delivered flags when the next reminder cycle is scheduled (Issue 5)
+        prefs.edit().remove("delivered_keys").apply();
+
         // 1. Cancel previously scheduled alarms to prevent stale triggers and duplicates
         Set<String> previouslyScheduled = prefs.getStringSet("scheduled_ids", new HashSet<>());
         for (String id : previouslyScheduled) {
@@ -150,6 +153,14 @@ public class RescheduleWorker extends Worker {
                     age = upcomingYear - birthYear;
                 } catch (Exception ignored) {}
 
+                // Construct unique key to track background deliveries and prevent duplicate in-app banners
+                int trigYear = triggerTime.get(Calendar.YEAR);
+                int trigMonth = triggerTime.get(Calendar.MONTH);
+                int trigDay = triggerTime.get(Calendar.DAY_OF_MONTH);
+                int trigHour = triggerTime.get(Calendar.HOUR_OF_DAY);
+                int trigMinute = triggerTime.get(Calendar.MINUTE);
+                String uniqueKey = id + "_" + trigYear + "_" + trigMonth + "_" + trigDay + "_" + trigHour + "_" + trigMinute;
+
                 // Schedule alarm via PendingIntent
                 Intent intent = new Intent(context, AlarmReceiver.class);
                 intent.setAction("com.starklabsai.birthdayreminder.ACTION_ALARM_" + id);
@@ -159,6 +170,7 @@ public class RescheduleWorker extends Worker {
                 intent.putExtra("birthDate", dateStr);
                 intent.putExtra("daysBefore", daysBefore);
                 intent.putExtra("hideYear", hideYear);
+                intent.putExtra("uniqueKey", uniqueKey);
 
                 int requestCode = Math.abs(id.hashCode());
                 PendingIntent pendingIntent = PendingIntent.getBroadcast(

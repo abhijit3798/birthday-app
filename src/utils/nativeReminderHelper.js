@@ -3,7 +3,7 @@ import { registerPlugin, Capacitor } from '@capacitor/core';
 // Register our custom native Android plugin
 const BirthdayReminder = registerPlugin('BirthdayReminder');
 
-const isAndroid = () => Capacitor.getPlatform() === 'android';
+export const isAndroid = () => Capacitor.getPlatform() === 'android';
 
 /**
  * Synchronizes the list of birthdays and global reminder settings with the Android native AlarmManager.
@@ -138,5 +138,20 @@ export async function checkLaunchNotification(callback) {
     }
   } catch (e) {
     console.error('Failed checking launch notification payload:', e);
+  }
+}
+
+/**
+ * Fetches and clears native delivered reminder keys.
+ * Returns an array of uniqueKeys.
+ */
+export async function getAndClearNativeDelivered() {
+  if (!isAndroid()) return [];
+  try {
+    const result = await BirthdayReminder.getAndClearDeliveredNotifications();
+    return result.delivered || [];
+  } catch (e) {
+    console.error('Failed to get native delivered notifications:', e);
+    return [];
   }
 }

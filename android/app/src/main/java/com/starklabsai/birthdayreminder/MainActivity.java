@@ -10,7 +10,11 @@ public class MainActivity extends BridgeActivity {
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
+
+        registerPlugin(BirthdayReminderPlugin.class);
+
         super.onCreate(savedInstanceState);
+
         handleIntent(getIntent());
     }
 

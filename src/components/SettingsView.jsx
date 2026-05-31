@@ -2,34 +2,94 @@ import { useState, useEffect } from 'react';
 import { ArrowLeft, ChevronRight, Download, ChevronUp, ChevronDown } from 'lucide-react';
 import useLocalStorage from '../hooks/useLocalStorage';
 import { getReminderTriggerDate, formatTime12Hour } from '../utils/dateHelpers';
-import { getNativeDiagnostics, requestNativeNotificationPermission, requestNativeExactAlarmPermission, requestNativeBatteryBypass } from '../utils/nativeReminderHelper';
 
 export function SettingsView({ onBack, onNavigate, birthdays, deferredPrompt, isAppInstalled, onAppInstalled, darkMode, onToggleDarkMode, globalSettings, onUpdateGlobalSettings }) {
   const remindersSettings = globalSettings;
   const setRemindersSettings = onUpdateGlobalSettings;
 
-  const [diagnostics, setDiagnostics] = useState({
-    notifications: true,
-    exactAlarms: true,
-    batteryOptimization: true,
-    isNative: false
-  });
-
-  const loadDiagnostics = async () => {
-    const data = await getNativeDiagnostics();
-    setDiagnostics(data);
-  };
-
-  useEffect(() => {
-    loadDiagnostics();
-    window.addEventListener('focus', loadDiagnostics);
-    return () => window.removeEventListener('focus', loadDiagnostics);
-  }, []);
-
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [pickerHour, setPickerHour] = useState('09');
   const [pickerMinute, setPickerMinute] = useState('00');
   const [pickerPeriod, setPickerPeriod] = useState('AM');
+
+  const [daysBeforeInput, setDaysBeforeInput] = useState(String(remindersSettings.daysBefore ?? 1));
+  const [leapYearDaysBeforeInput, setLeapYearDaysBeforeInput] = useState(String(remindersSettings.leapYearDaysBefore ?? 1));
+
+  useEffect(() => {
+    setDaysBeforeInput(String(remindersSettings.daysBefore ?? 1));
+  }, [remindersSettings.daysBefore]);
+
+  useEffect(() => {
+    setLeapYearDaysBeforeInput(String(remindersSettings.leapYearDaysBefore ?? 1));
+  }, [remindersSettings.leapYearDaysBefore]);
+
+  const handleDaysBeforeChange = (e) => {
+    const rawVal = e.target.value;
+    const cleaned = rawVal.replace(/[^0-9]/g, '');
+    setDaysBeforeInput(cleaned);
+
+    if (cleaned !== '') {
+      const num = parseInt(cleaned, 10);
+      if (num >= 0 && num <= 365) {
+        setRemindersSettings(prev => ({ ...prev, daysBefore: num, updatedAt: Date.now() }));
+      }
+    }
+  };
+
+  const handleDaysBeforeBlur = () => {
+    let finalVal = remindersSettings.daysBefore ?? 1;
+    
+    if (daysBeforeInput !== '') {
+      const num = parseInt(daysBeforeInput, 10);
+      if (num < 0) {
+        finalVal = 0;
+      } else if (num > 365) {
+        finalVal = 365;
+      } else {
+        finalVal = num;
+      }
+    } else {
+      finalVal = remindersSettings.daysBefore ?? 1;
+    }
+    
+    setDaysBeforeInput(String(finalVal));
+    setRemindersSettings(prev => ({ ...prev, daysBefore: finalVal, updatedAt: Date.now() }));
+  };
+
+  const handleLeapYearDaysBeforeChange = (e) => {
+    const rawVal = e.target.value;
+    const cleaned = rawVal.replace(/[^0-9]/g, '');
+    setLeapYearDaysBeforeInput(cleaned);
+
+    if (cleaned !== '') {
+      const num = parseInt(cleaned, 10);
+      if (num >= 0 && num <= 365) {
+        setRemindersSettings(prev => ({ ...prev, leapYearDaysBefore: num, updatedAt: Date.now() }));
+      }
+    }
+  };
+
+  const handleLeapYearDaysBeforeBlur = () => {
+    let finalVal = remindersSettings.leapYearDaysBefore ?? 1;
+    
+    if (leapYearDaysBeforeInput !== '') {
+      const num = parseInt(leapYearDaysBeforeInput, 10);
+      if (num < 0) {
+        finalVal = 0;
+      } else if (num > 365) {
+        finalVal = 365;
+      } else {
+        finalVal = num;
+      }
+    } else {
+      finalVal = remindersSettings.leapYearDaysBefore ?? 1;
+    }
+    
+    setLeapYearDaysBeforeInput(String(finalVal));
+    setRemindersSettings(prev => ({ ...prev, leapYearDaysBefore: finalVal, updatedAt: Date.now() }));
+  };
+
+
 
   useEffect(() => {
     // Run self-testing logic check simulating non-leap year for Feb 29 birthday
@@ -149,14 +209,12 @@ export function SettingsView({ onBack, onNavigate, birthdays, deferredPrompt, is
                   <span className="text-sm font-bold text-slate-700 dark:text-slate-200">Send Reminder</span>
                   <div className="flex items-center gap-2">
                     <input
-                      type="number"
-                      min="0"
-                      max="365"
-                      value={remindersSettings.daysBefore}
-                      onChange={(e) => {
-                        const val = Math.min(365, Math.max(0, parseInt(e.target.value) || 0));
-                        setRemindersSettings(prev => ({ ...prev, daysBefore: val, updatedAt: Date.now() }));
-                      }}
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      value={daysBeforeInput}
+                      onChange={handleDaysBeforeChange}
+                      onBlur={handleDaysBeforeBlur}
                       className="w-16 bg-slate-50 dark:bg-[#0c1220] border border-slate-200 dark:border-[#222e45] rounded-xl px-2 py-1 text-sm font-bold text-slate-700 dark:text-slate-200 text-center focus:outline-none focus:border-[#F2591D]"
                     />
                     <span className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Days Before</span>
@@ -191,88 +249,6 @@ export function SettingsView({ onBack, onNavigate, birthdays, deferredPrompt, is
           </div>
         </div>
 
-        {/* Native Android Diagnostics Panel (only visible on native Android platform) */}
-        {diagnostics.isNative && (
-          <div className="bg-white dark:bg-[#151c2c] border border-gray-100 dark:border-[#222e45] rounded-[28px] p-4.5 shadow-sm flex flex-col animate-fade-in">
-            <h3 className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3.5 px-1">
-              Notification Diagnostics
-            </h3>
-            
-            <div className="flex flex-col gap-3">
-              {/* 1. System Notifications Status */}
-              <div className="flex justify-between items-center py-1.5 px-1 border-b border-slate-50 dark:border-[#1e293b] pb-2.5">
-                <div className="flex flex-col">
-                  <span className="text-xs font-black text-slate-700 dark:text-slate-200">System Notifications</span>
-                  <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 mt-0.5">Required for alerts</span>
-                </div>
-                {diagnostics.notifications ? (
-                  <span className="px-3 py-1 bg-green-500/10 dark:bg-green-500/20 text-green-500 rounded-full text-[10px] font-black uppercase tracking-wider">
-                    Enabled
-                  </span>
-                ) : (
-                  <button
-                    onClick={async () => {
-                      const granted = await requestNativeNotificationPermission();
-                      if (!granted) {
-                        alert("To receive reminders, please enable notifications inside the system settings page.");
-                      }
-                      loadDiagnostics();
-                    }}
-                    className="px-3 py-1.5 bg-[#F2591D] text-white rounded-xl text-[9px] font-black uppercase tracking-wider cursor-pointer shadow-sm active:scale-95 transition-all"
-                  >
-                    Enable
-                  </button>
-                )}
-              </div>
-
-              {/* 2. Exact Alarms Status */}
-              <div className="flex justify-between items-center py-1.5 px-1 border-b border-slate-50 dark:border-[#1e293b] pb-2.5">
-                <div className="flex flex-col">
-                  <span className="text-xs font-black text-slate-700 dark:text-slate-200">Exact Reminders</span>
-                  <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 mt-0.5">Fires exactly on time</span>
-                </div>
-                {diagnostics.exactAlarms ? (
-                  <span className="px-3 py-1 bg-green-500/10 dark:bg-green-500/20 text-green-500 rounded-full text-[10px] font-black uppercase tracking-wider">
-                    Allowed
-                  </span>
-                ) : (
-                  <button
-                    onClick={async () => {
-                      await requestNativeExactAlarmPermission();
-                      alert("Please enable the 'Allow setting exact alarms' permission in the system settings screen that opens.");
-                    }}
-                    className="px-3 py-1.5 bg-amber-500 text-white rounded-xl text-[9px] font-black uppercase tracking-wider cursor-pointer shadow-sm active:scale-95 transition-all"
-                  >
-                    Configure
-                  </button>
-                )}
-              </div>
-
-              {/* 3. Battery Optimization Status */}
-              <div className="flex justify-between items-center py-1.5 px-1">
-                <div className="flex flex-col">
-                  <span className="text-xs font-black text-slate-700 dark:text-slate-200">Battery Priority</span>
-                  <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 mt-0.5">Resilience in background</span>
-                </div>
-                {diagnostics.batteryOptimization ? (
-                  <span className="px-3 py-1 bg-green-500/10 dark:bg-green-500/20 text-green-500 rounded-full text-[10px] font-black uppercase tracking-wider">
-                    Optimal
-                  </span>
-                ) : (
-                  <button
-                    onClick={async () => {
-                      await requestNativeBatteryBypass();
-                    }}
-                    className="px-3 py-1.5 bg-amber-500 text-white rounded-xl text-[9px] font-black uppercase tracking-wider cursor-pointer shadow-sm active:scale-95 transition-all"
-                  >
-                    Optimize
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* 2. Leap Year Settings Panel */}
         <div className="bg-white dark:bg-[#151c2c] border border-gray-100 dark:border-[#222e45] rounded-[28px] p-4.5 shadow-sm flex flex-col">
           <h3 className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3 px-1">
@@ -283,14 +259,12 @@ export function SettingsView({ onBack, onNavigate, birthdays, deferredPrompt, is
             <span className="text-sm font-bold text-slate-700 dark:text-slate-200">Send Reminder on</span>
             <div className="flex items-center gap-2">
               <input
-                type="number"
-                min="0"
-                max="365"
-                value={remindersSettings.leapYearDaysBefore}
-                onChange={(e) => {
-                  const val = Math.min(365, Math.max(0, parseInt(e.target.value) || 0));
-                  setRemindersSettings(prev => ({ ...prev, leapYearDaysBefore: val, updatedAt: Date.now() }));
-                }}
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                value={leapYearDaysBeforeInput}
+                onChange={handleLeapYearDaysBeforeChange}
+                onBlur={handleLeapYearDaysBeforeBlur}
                 className="w-16 bg-slate-50 dark:bg-[#0c1220] border border-slate-200 dark:border-[#222e45] rounded-xl px-2 py-1 text-sm font-bold text-slate-700 dark:text-slate-200 text-center focus:outline-none focus:border-[#F2591D]"
               />
               <span className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Days Before</span>

@@ -9,7 +9,7 @@ import ProView from './components/ProView';
 import PrivacyPolicy from './components/PrivacyPolicy';
 import CalendarComingSoon from './components/CalendarComingSoon';
 import { getReminderTriggerDate } from './utils/dateHelpers';
-import { syncWithNative, requestNativeNotificationPermission, checkLaunchNotification } from './utils/nativeReminderHelper';
+import { syncWithNative, requestNativeNotificationPermission, checkLaunchNotification, getAndClearNativeDelivered, isAndroid } from './utils/nativeReminderHelper';
 
 const getInitialBirthdays = () => {
   const today = new Date();
@@ -102,6 +102,7 @@ export function App() {
   const [editingBirthday, setEditingBirthday] = useState(null);
   const [darkMode, setDarkMode] = useLocalStorage('birthday_dark_mode', false);
   const [toast, setToast] = useState(null);
+  const [showPermissionModal, setShowPermissionModal] = useState(false);
   const isPopStateChange = useRef(false);
 
   useEffect(() => {
@@ -208,7 +209,7 @@ export function App() {
 
   // 3. Proactive Notification Scheduler
   useEffect(() => {
-    const checkReminders = () => {
+    const checkReminders = async () => {
       try {
         const now = new Date();
         const globalSettings = JSON.parse(
@@ -217,6 +218,27 @@ export function App() {
         );
 
         if (!globalSettings.enabled) return;
+
+        // Sync native background-delivered reminder flags to prevent duplicate foreground banners
+        if (isAndroid()) {
+          const nativeDelivered = await getAndClearNativeDelivered();
+          if (nativeDelivered && nativeDelivered.length > 0) {
+            const sentReminders = JSON.parse(localStorage.getItem('birthday_sent_reminders') || '{}');
+            let updatedSent = false;
+            nativeDelivered.forEach(key => {
+              if (!sentReminders[key]) {
+                sentReminders[key] = now.getTime();
+                updatedSent = true;
+                console.log('⏰ Syncing native background delivered key to JS:', key);
+              }
+            });
+            if (updatedSent) {
+              localStorage.setItem('birthday_sent_reminders', JSON.stringify(sentReminders));
+            }
+          }
+          // Rely entirely on native Android scheduling, bypassing in-app orange banners
+          return;
+        }
 
         const sentReminders = JSON.parse(localStorage.getItem('birthday_sent_reminders') || '{}');
         let updatedSent = false;
@@ -363,10 +385,57 @@ export function App() {
     }
   }, [birthdays]);
 
-  // 6. Request native notification permissions on startup
+  // 6. Friendly explanation permission prompt check on first startup after install
   useEffect(() => {
-    requestNativeNotificationPermission();
+    const checkPermissionOnStartup = async () => {
+      if (!isAndroid()) return;
+
+      try {
+        const diagnostics = await getNativeDiagnostics();
+        console.log("🔔 Permission Check - Startup Status:", diagnostics.notifications ? "GRANTED" : "DENIED");
+
+        if (diagnostics.notifications) {
+          console.log("🔔 Permission Check - Already granted. Skipping prompt.");
+          return;
+        }
+
+        const promptShown = localStorage.getItem('notificationPermissionRequested') === 'true';
+        console.log("🔔 Permission Check - Prompt already shown in past:", promptShown);
+
+        if (!promptShown) {
+          console.log("🔔 Permission Check - Showing friendly notification prompt modal...");
+          setShowPermissionModal(true);
+        }
+      } catch (e) {
+        console.error("Error during startup permission check:", e);
+      }
+    };
+
+    checkPermissionOnStartup();
   }, []);
+
+  const handleAllowPermission = async () => {
+    console.log("🔔 Permission Check - User tapped ALLOW. Requesting system POST_NOTIFICATIONS...");
+    setShowPermissionModal(false);
+    
+    localStorage.setItem('notificationPermissionRequested', 'true');
+    console.log("🔔 Permission Check - Saved prompt flag: notificationPermissionRequested = true");
+
+    const granted = await requestNativeNotificationPermission();
+    if (granted) {
+      console.log("🔔 Permission Check - Runtime permission ACCEPTED by user!");
+    } else {
+      console.log("🔔 Permission Check - Runtime permission DENIED by user.");
+    }
+  };
+
+  const handleDenyPermission = () => {
+    console.log("🔔 Permission Check - User tapped NOT NOW. Denied for this run.");
+    setShowPermissionModal(false);
+    
+    localStorage.setItem('notificationPermissionRequested', 'true');
+    console.log("🔔 Permission Check - Saved prompt flag: notificationPermissionRequested = true");
+  };
 
 
   // PWA install states
@@ -484,6 +553,50 @@ export function App() {
           >
             ✕
           </button>
+        </div>
+      )}
+
+      {/* Friendly Explanation Notification Permission Modal */}
+      {showPermissionModal && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+          {/* Backdrop with blur */}
+          <div className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm animate-fade-in" />
+          
+          {/* Modal Card */}
+          <div className="bg-white dark:bg-[#151c2c] border border-gray-100 dark:border-[#222e45] rounded-[32px] w-full max-w-[340px] p-6 shadow-2xl z-10 flex flex-col items-center text-center animate-scale-in">
+            {/* Elegant Ringing Bell Icon */}
+            <div className="w-16 h-16 bg-[#F2591D]/10 text-[#F2591D] rounded-full flex items-center justify-center text-3xl mb-4.5 animate-bounce">
+              🔔
+            </div>
+            
+            {/* Title */}
+            <h3 className="text-lg font-black text-slate-800 dark:text-slate-100 font-headings tracking-tight leading-snug">
+              Enable Birthday Reminders
+            </h3>
+            
+            {/* Message */}
+            <p className="text-xs text-slate-500 dark:text-slate-400 font-semibold mt-2.5 leading-relaxed px-1">
+              Allow notifications so you never miss an important birthday reminder.
+            </p>
+            
+            {/* Action Buttons */}
+            <div className="w-full flex gap-3.5 mt-6.5">
+              <button
+                type="button"
+                onClick={handleDenyPermission}
+                className="flex-1 py-3 bg-slate-50 dark:bg-[#0c1220] hover:bg-slate-100 dark:hover:bg-[#1e293b] text-slate-500 dark:text-slate-400 rounded-2xl text-xs font-bold transition-all active:scale-95 cursor-pointer border border-slate-100 dark:border-[#222e45]"
+              >
+                Not Now
+              </button>
+              <button
+                type="button"
+                onClick={handleAllowPermission}
+                className="flex-1 py-3 bg-gradient-to-r from-blue-500 to-[#F2591D] text-white rounded-2xl text-xs font-bold transition-all active:scale-95 cursor-pointer shadow-md hover:brightness-110 border border-white/10"
+              >
+                Allow
+              </button>
+            </div>
+          </div>
         </div>
       )}
       {currentView === 'list' && (

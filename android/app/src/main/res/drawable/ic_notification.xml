@@ -1,0 +1,26 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    
+    <!-- Candle Flame -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M12,1.8 C11.3,3.3 12,4.5 12,4.5 C12,4.5 12.7,3.3 12,1.8 Z"/>
+    
+    <!-- Candle Body -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M11.5,5.2 h1 v2.8 h-1 Z"/>
+    
+    <!-- Top Cake Layer -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M6.5,9 A1.5,1.5 0 0 1 8,7.5 h8 A1.5,1.5 0 0 1 17.5,9 v3.5 A1.5,1.5 0 0 1 16,14 H8 A1.5,1.5 0 0 1 6.5,12.5 Z"/>
+    
+    <!-- Bottom Cake Layer -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M3.5,15.5 A1.5,1.5 0 0 1 5,14 h14 A1.5,1.5 0 0 1 20.5,15.5 v4 A1.5,1.5 0 0 1 19,21 H5 A1.5,1.5 0 0 1 3.5,19.5 Z"/>
+</vector>
