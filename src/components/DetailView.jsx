@@ -185,9 +185,8 @@ export function DetailView({ birthday, onBack, onEdit, onUpdate, onNavigate }) {
               isToday 
                 ? 'bg-white text-[#F2591D] border-white' 
                 : 'bg-white/15 text-white border-white/20'
-
             }`}>
-              {isToday ? 'Today' : `${daysLeft} days left`}
+              {isToday ? 'Today' : daysLeft === 1 ? '1 day left' : `${daysLeft} days left`}
             </span>
           </div>
         </div>

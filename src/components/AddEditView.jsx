@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, ChevronLeft, ChevronRight, Zap, ZapOff, RefreshCw } from 'lucide-react';
-import { CakeIcon } from './CakeIcon';
+import { ArrowLeft, ChevronLeft, ChevronRight, Zap, ZapOff, RefreshCw, Camera, Calendar } from 'lucide-react';
 
 export function AddEditView({ editingBirthday, onBack, onSave, onDelete }) {
   // Compute initial states directly based on editingBirthday prop
@@ -142,6 +141,9 @@ export function AddEditView({ editingBirthday, onBack, onSave, onDelete }) {
     setDate(`${y}-${m}-${d}`);
     setHideYear(calendarHideYear);
     setShowDatePicker(false);
+    
+    // Clear date validation error instantly upon selecting a valid date
+    setErrors(prev => ({ ...prev, date: '' }));
   };
 
   const handlePrevMonth = () => {
@@ -436,19 +438,112 @@ export function AddEditView({ editingBirthday, onBack, onSave, onDelete }) {
     };
   };
 
+  const handleFirstNameChange = (e) => {
+    const val = e.target.value;
+    // Prevent numeric input while typing completely
+    const cleaned = val.replace(/[0-9]/g, '');
+    setFirstName(cleaned);
+    // Clear validation error immediately while typing
+    setErrors(prev => ({ ...prev, firstName: '' }));
+  };
+
+  const handleFirstNameBlur = () => {
+    const fName = firstName.trim();
+    if (!fName) {
+      setErrors(prev => ({ ...prev, firstName: 'First name is required' }));
+    } else {
+      setErrors(prev => ({ ...prev, firstName: '' }));
+    }
+  };
+
+  const handleLastNameChange = (e) => {
+    const val = e.target.value;
+    // Prevent numeric input while typing completely
+    const cleaned = val.replace(/[0-9]/g, '');
+    setLastName(cleaned);
+    // Clear validation error immediately while typing
+    setErrors(prev => ({ ...prev, lastName: '' }));
+  };
+
+  const handleLastNameBlur = () => {
+    setErrors(prev => ({ ...prev, lastName: '' }));
+  };
+
+  const handlePhoneChange = (e) => {
+    const rawVal = e.target.value;
+    // Allow only digits. Reject letters, emojis, spaces, and special characters while typing. Max 10.
+    const cleaned = rawVal.replace(/[^0-9]/g, '').slice(0, 10);
+    setPhoneNumber(cleaned);
+    // Clear validation error immediately while typing
+    setErrors(prev => ({ ...prev, phoneNumber: '' }));
+  };
+
+  const handlePhoneBlur = () => {
+    if (phoneNumber) {
+      if (!/^[6-9]/.test(phoneNumber) || phoneNumber.length < 10) {
+        setErrors(prev => ({ ...prev, phoneNumber: 'Enter a valid mobile number' }));
+      } else {
+        setErrors(prev => ({ ...prev, phoneNumber: '' }));
+      }
+    } else {
+      setErrors(prev => ({ ...prev, phoneNumber: '' }));
+    }
+  };
+
+  const handleEmailChange = (e) => {
+    const val = e.target.value;
+    setEmailAddress(val);
+    // Clear validation error immediately while typing
+    setErrors(prev => ({ ...prev, emailAddress: '' }));
+  };
+
+  const handleEmailBlur = () => {
+    if (emailAddress) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(emailAddress)) {
+        setErrors(prev => ({ ...prev, emailAddress: 'Enter a valid email address' }));
+      } else {
+        setErrors(prev => ({ ...prev, emailAddress: '' }));
+      }
+    } else {
+      setErrors(prev => ({ ...prev, emailAddress: '' }));
+    }
+  };
+
   const handleValidate = () => {
     const newErrors = {};
-    if (!firstName.trim()) {
+
+    // 1. First Name
+    const fName = firstName.trim();
+    if (!fName) {
       newErrors.firstName = 'First name is required';
     }
+
+    // 2. Birth Date
     if (!hasChosenDate || !date) {
-      newErrors.date = 'Birthday date is required';
+      newErrors.date = 'Birth date is required';
     } else {
       const d = new Date(date);
       if (isNaN(d.getTime())) {
         newErrors.date = 'Invalid date';
       }
     }
+
+    // 3. Phone Number
+    if (phoneNumber) {
+      if (!/^[6-9]/.test(phoneNumber) || phoneNumber.length < 10) {
+        newErrors.phoneNumber = 'Enter a valid mobile number';
+      }
+    }
+
+    // 4. Email Address
+    if (emailAddress) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(emailAddress)) {
+        newErrors.emailAddress = 'Enter a valid email address';
+      }
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -540,14 +635,18 @@ export function AddEditView({ editingBirthday, onBack, onSave, onDelete }) {
                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all text-[10px] font-bold text-white uppercase tracking-wider">
                   Change
                 </div>
+                {/* Bottom right camera overlay */}
+                <div className="absolute bottom-1 right-1 bg-[#F2591D] border-2 border-white dark:border-[#151c2c] rounded-full p-1.5 shadow-md flex items-center justify-center text-white">
+                  <Camera size={12} className="stroke-[2.5]" />
+                </div>
               </div>
             ) : (
               <div
                 onClick={() => setShowPhotoPopover(!showPhotoPopover)}
                 className="w-24 h-24 bg-[#F2591D] hover:brightness-110 rounded-3xl flex flex-col items-center justify-center text-white cursor-pointer shadow-md transition-all gap-1.5"
               >
-                <CakeIcon size={44} />
-                <span className="text-[9px] font-extrabold uppercase tracking-wider opacity-90">Add Photo</span>
+                <Camera size={36} className="stroke-[2]" />
+                <span className="text-[9px] font-extrabold uppercase tracking-wider opacity-90">Upload Photo</span>
               </div>
             )}
 
@@ -591,14 +690,15 @@ export function AddEditView({ editingBirthday, onBack, onSave, onDelete }) {
           </div>
 
           {/* Input Fields block */}
-          <form className="w-full space-y-4">
+          <form className="w-full space-y-4" onSubmit={(e) => e.preventDefault()}>
             
             {/* First Name Input */}
             <div>
               <input
                 type="text"
                 value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
+                onChange={handleFirstNameChange}
+                onBlur={handleFirstNameBlur}
                 placeholder="First name"
                 className="ios-input"
               />
@@ -610,22 +710,30 @@ export function AddEditView({ editingBirthday, onBack, onSave, onDelete }) {
               <input
                 type="text"
                 value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
+                onChange={handleLastNameChange}
+                onBlur={handleLastNameBlur}
                 placeholder="Last name"
                 className="ios-input"
               />
+              {errors.lastName && <span className="text-[10px] text-red-500 font-semibold mt-1 block">{errors.lastName}</span>}
             </div>
 
             {/* Birthday Date Selection */}
-            <div>
+            <div className="relative">
               <input
                 type="text"
                 readOnly
                 value={getFormattedBirthdayLabel()}
                 onClick={handleOpenDatePicker}
-                placeholder="Birthday"
-                className="ios-input cursor-pointer"
+                placeholder="Birth Date"
+                className="ios-input cursor-pointer pr-10"
               />
+              <div 
+                onClick={handleOpenDatePicker}
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 cursor-pointer pointer-events-auto flex items-center justify-center"
+              >
+                <Calendar size={18} />
+              </div>
               {errors.date && <span className="text-[10px] text-red-500 font-semibold mt-1 block">{errors.date}</span>}
             </div>
 
@@ -634,10 +742,12 @@ export function AddEditView({ editingBirthday, onBack, onSave, onDelete }) {
               <input
                 type="tel"
                 value={phoneNumber}
-                onChange={(e) => setPhoneNumber(e.target.value)}
+                onChange={handlePhoneChange}
+                onBlur={handlePhoneBlur}
                 placeholder="Phone Number"
                 className="ios-input"
               />
+              {errors.phoneNumber && <span className="text-[10px] text-red-500 font-semibold mt-1 block">{errors.phoneNumber}</span>}
             </div>
 
             {/* Email Address Input */}
@@ -645,10 +755,12 @@ export function AddEditView({ editingBirthday, onBack, onSave, onDelete }) {
               <input
                 type="email"
                 value={emailAddress}
-                onChange={(e) => setEmailAddress(e.target.value)}
+                onChange={handleEmailChange}
+                onBlur={handleEmailBlur}
                 placeholder="Email Address"
                 className="ios-input"
               />
+              {errors.emailAddress && <span className="text-[10px] text-red-500 font-semibold mt-1 block">{errors.emailAddress}</span>}
             </div>
 
             {/* Notes Textarea */}

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { ArrowLeft, ChevronRight, Download, ChevronUp, ChevronDown } from 'lucide-react';
 import useLocalStorage from '../hooks/useLocalStorage';
-import { getReminderTriggerDate, formatTime12Hour } from '../utils/dateHelpers';
+import { getReminderTriggerDate, formatTime12Hour, parseDate, getNextBirthday, getAgeInfo } from '../utils/dateHelpers';
 import { jsPDF } from 'jspdf';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 
@@ -126,7 +126,7 @@ export function SettingsView({ onBack, onNavigate, birthdays, deferredPrompt, is
   }, []);
 
 
-  // Trigger JSON download of birthdays as a backup export feature!
+  // Trigger PDF download of birthdays as a professional backup export feature!
   const handleExportBirthdays = async () => {
     try {
       if (!birthdays || birthdays.length === 0) {
@@ -134,30 +134,164 @@ export function SettingsView({ onBack, onNavigate, birthdays, deferredPrompt, is
         return;
       }
 
-      const pdf = new jsPDF();
-
-      pdf.setFontSize(18);
-      pdf.text('Birthday Backup', 20, 20);
-
-      let y = 40;
-
-      birthdays.forEach((birthday, index) => {
-        const name = birthday.name || 'Unknown';
-        const date = birthday.birthDate || '';
-
-        pdf.setFontSize(12);
-        pdf.text(`${index + 1}. ${name} - ${date}`, 20, y);
-
-        y += 10;
-
-        if (y > 270) {
-          pdf.addPage();
-          y = 20;
-        }
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
       });
 
-      const base64Pdf = pdf.output('datauristring').split(',')[1];
+      // Render Title
+      pdf.setFont('Helvetica', 'bold');
+      pdf.setFontSize(22);
+      pdf.setTextColor(242, 89, 29); // Premium Orange (#F2591D)
+      pdf.text('Birthday Reminder Backup', 20, 25);
 
+      // Generated Time
+      pdf.setFont('Helvetica', 'normal');
+      pdf.setFontSize(9);
+      pdf.setTextColor(100, 116, 139); // Slate-500
+      const nowStr = new Date().toLocaleString('en-US', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+      });
+      pdf.text(`Backup Generated: ${nowStr}`, 20, 32);
+
+      // Header underline
+      pdf.setDrawColor(242, 89, 29); // Premium Orange
+      pdf.setLineWidth(1.0);
+      pdf.line(20, 36, 190, 36);
+
+      let y = 48; // starting point of records
+
+      birthdays.forEach((birthday, index) => {
+        // Handle page breaks automatically: if the card exceeds available page space, insert break
+        if (y + 35 > 270) {
+          pdf.addPage();
+          y = 25; // reset y to top margin on next page
+        }
+
+        const name = birthday.name || 'Unknown';
+        const birthDateStr = birthday.date || birthday.birthDate || '';
+        
+        let formattedDob = birthDateStr || 'N/A';
+        if (birthDateStr) {
+          const dobObj = parseDate(birthDateStr);
+          if (dobObj) {
+            formattedDob = dobObj.toLocaleDateString('en-US', {
+              month: 'short',
+              day: 'numeric',
+              year: birthday.hideYear ? undefined : 'numeric'
+            });
+          }
+        }
+
+        let ageText = 'N/A';
+        if (birthDateStr) {
+          const nextBdayObj = getNextBirthday(birthDateStr, new Date());
+          if (nextBdayObj) {
+            const { currentAge } = getAgeInfo(birthDateStr, nextBdayObj);
+            ageText = `${currentAge} years old`;
+          }
+        }
+
+        const phone = birthday.phoneNumber || 'N/A';
+        const email = birthday.emailAddress || 'N/A';
+
+        // Reminders evaluation (Custom override vs Global fallback)
+        let reminderStatus = 'Disabled';
+        let daysBeforeVal = 'N/A';
+        let notificationTimeVal = 'N/A';
+
+        const customRem = birthday.customReminders;
+        if (customRem && typeof customRem === 'object') {
+          if (customRem.enabled) {
+            reminderStatus = 'Enabled (Custom)';
+            daysBeforeVal = `${customRem.daysBefore} ${customRem.daysBefore === 1 ? 'day' : 'days'} before`;
+            notificationTimeVal = formatTime12Hour(customRem.notificationTime || '09:00');
+          } else {
+            reminderStatus = 'Disabled (Custom)';
+          }
+        } else {
+          // Global Settings fallback
+          const globalEnabled = remindersSettings?.enabled ?? true;
+          if (globalEnabled) {
+            reminderStatus = 'Enabled (Global)';
+            daysBeforeVal = `${remindersSettings?.daysBefore ?? 1} ${(remindersSettings?.daysBefore ?? 1) === 1 ? 'day' : 'days'} before`;
+            notificationTimeVal = formatTime12Hour(remindersSettings?.notificationTime || '09:00');
+          } else {
+            reminderStatus = 'Disabled (Global)';
+          }
+        }
+
+        // Section Title: Name
+        pdf.setFont('Helvetica', 'bold');
+        pdf.setFontSize(12);
+        pdf.setTextColor(30, 41, 59); // Slate-800
+        pdf.text(`${index + 1}. ${name}`, 20, y);
+
+        y += 6;
+
+        pdf.setFont('Helvetica', 'normal');
+        pdf.setFontSize(9);
+        pdf.setTextColor(71, 85, 105); // Slate-600
+
+        // Column 1
+        const col1X = 22;
+        pdf.text(`• Birthday: ${formattedDob}`, col1X, y);
+        pdf.text(`• Age: ${ageText}`, col1X, y + 5);
+        pdf.text(`• Phone: ${phone}`, col1X, y + 10);
+        pdf.text(`• Email: ${email}`, col1X, y + 15);
+
+        // Column 2
+        const col2X = 110;
+        pdf.text(`• Reminder: ${reminderStatus}`, col2X, y);
+        pdf.text(`• Days Before: ${daysBeforeVal}`, col2X, y + 5);
+        pdf.text(`• Notification Time: ${notificationTimeVal}`, col2X, y + 10);
+
+        y += 22;
+
+        // Divider line between records
+        pdf.setDrawColor(226, 232, 240); // Slate-200
+        pdf.setLineWidth(0.3);
+        pdf.line(20, y, 190, y);
+
+        y += 10; // spacing before next record
+      });
+
+      // Render Summary at the bottom
+      if (y + 15 > 270) {
+        pdf.addPage();
+        y = 25;
+      }
+
+      pdf.setFont('Helvetica', 'bold');
+      pdf.setFontSize(11);
+      pdf.setTextColor(30, 41, 59); // Slate-800
+      pdf.text(`Total Birthdays: ${birthdays.length}`, 20, y);
+
+      // Double line for total summary footer
+      pdf.setDrawColor(203, 213, 225); // Slate-300
+      pdf.setLineWidth(0.8);
+      pdf.line(20, y + 3, 190, y + 3);
+
+      // Add Page Numbers on all pages if total pages > 1
+      const pageCount = pdf.internal.getNumberOfPages();
+      if (pageCount > 1) {
+        for (let i = 1; i <= pageCount; i++) {
+          pdf.setPage(i);
+          pdf.setFont('Helvetica', 'normal');
+          pdf.setFontSize(9);
+          pdf.setTextColor(148, 163, 184); // Slate-400
+          pdf.text(`Page ${i} of ${pageCount}`, 105, 287, { align: 'center' });
+        }
+      }
+
+      const base64Pdf = pdf.output('datauristring').split(',')[1];
       const fileName = `birthday_backup_${Date.now()}.pdf`;
 
       await Filesystem.writeFile({
@@ -166,6 +300,13 @@ export function SettingsView({ onBack, onNavigate, birthdays, deferredPrompt, is
         directory: Directory.Documents
       });
 
+      const fileInfo = await Filesystem.getUri({
+        directory: Directory.Documents,
+        path: fileName,
+      });
+
+      console.log("PDF FILE INFO:", fileInfo);
+      alert(`PDF Path: ${fileInfo.uri}`);
       alert(`PDF exported successfully.\nFile: ${fileName}`);
     } catch (error) {
       console.error('Export failed:', error);

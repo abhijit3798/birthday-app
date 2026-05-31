@@ -58,7 +58,7 @@ export function ListView({ birthdays, onSelect, onNavigate }) {
     }
   });
 
-  // Format countdown text (e.g. "Today", "1 day", "4 days")
+  // Format countdown text (e.g. "Today", "1 day left", "4 days left")
   const getCountdownLabel = (nextBday) => {
     const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
     const nextBdayStart = new Date(nextBday.getFullYear(), nextBday.getMonth(), nextBday.getDate());
@@ -66,8 +66,8 @@ export function ListView({ birthdays, onSelect, onNavigate }) {
     const days = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
     
     if (days === 0) return { text: 'Today', isToday: true };
-    if (days === 1) return { text: '1 day', isToday: false };
-    return { text: `${days} days`, isToday: false };
+    if (days === 1) return { text: '1 day left', isToday: false };
+    return { text: `${days} days left`, isToday: false };
   };
 
   const getSubtext = (bday, nextBday) => {
