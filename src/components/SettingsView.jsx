@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { ArrowLeft, ChevronRight, Download, ChevronUp, ChevronDown } from 'lucide-react';
 import useLocalStorage from '../hooks/useLocalStorage';
 import { getReminderTriggerDate, formatTime12Hour } from '../utils/dateHelpers';
+import { jsPDF } from 'jspdf';
+import { Filesystem, Directory } from '@capacitor/filesystem';
 
 export function SettingsView({ onBack, onNavigate, birthdays, deferredPrompt, isAppInstalled, onAppInstalled, darkMode, onToggleDarkMode, globalSettings, onUpdateGlobalSettings }) {
   const remindersSettings = globalSettings;
@@ -125,21 +127,50 @@ export function SettingsView({ onBack, onNavigate, birthdays, deferredPrompt, is
 
 
   // Trigger JSON download of birthdays as a backup export feature!
-  const handleExportBirthdays = () => {
-    if (!birthdays || birthdays.length === 0) {
-      alert('You do not have any birthdays saved to export.');
-      return;
+  const handleExportBirthdays = async () => {
+    try {
+      if (!birthdays || birthdays.length === 0) {
+        alert('No birthdays available to export.');
+        return;
+      }
+
+      const pdf = new jsPDF();
+
+      pdf.setFontSize(18);
+      pdf.text('Birthday Backup', 20, 20);
+
+      let y = 40;
+
+      birthdays.forEach((birthday, index) => {
+        const name = birthday.name || 'Unknown';
+        const date = birthday.birthDate || '';
+
+        pdf.setFontSize(12);
+        pdf.text(`${index + 1}. ${name} - ${date}`, 20, y);
+
+        y += 10;
+
+        if (y > 270) {
+          pdf.addPage();
+          y = 20;
+        }
+      });
+
+      const base64Pdf = pdf.output('datauristring').split(',')[1];
+
+      const fileName = `birthday_backup_${Date.now()}.pdf`;
+
+      await Filesystem.writeFile({
+        path: fileName,
+        data: base64Pdf,
+        directory: Directory.Documents
+      });
+
+      alert(`PDF exported successfully.\nFile: ${fileName}`);
+    } catch (error) {
+      console.error('Export failed:', error);
+      alert('Failed to export PDF.');
     }
-    const dataStr = JSON.stringify(birthdays, null, 2);
-    const blob = new Blob([dataStr], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `birthdays_backup_${new Date().toISOString().split('T')[0]}.json`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
   };
 
   return (
