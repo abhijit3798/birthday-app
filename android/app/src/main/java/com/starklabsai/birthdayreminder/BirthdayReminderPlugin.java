@@ -128,4 +128,18 @@ public class BirthdayReminderPlugin extends Plugin {
             call.reject("Failed to get and clear delivered notifications: " + e.getMessage(), e);
         }
     }
+
+    @PluginMethod
+    public void openSettings(PluginCall call) {
+        try {
+            android.content.Intent intent = new android.content.Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+            android.net.Uri uri = android.net.Uri.fromParts("package", getContext().getPackageName(), null);
+            intent.setData(uri);
+            intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK);
+            getContext().startActivity(intent);
+            call.resolve();
+        } catch (Exception e) {
+            call.reject("Failed to open settings: " + e.getMessage(), e);
+        }
+    }
 }
