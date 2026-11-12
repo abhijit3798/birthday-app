@@ -14,7 +14,8 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "node src/tests/sanity.test.js && node src/tests/notification.test.js && node src/tests/reminderScheduler.test.js"
   },
   "dependencies": {
     "@capacitor/android": "^8.3.4",
