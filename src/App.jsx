@@ -9,8 +9,8 @@ import ProView from './components/ProView';
 import PrivacyPolicy from './components/PrivacyPolicy';
 import AboutView from './components/AboutView';
 import CalendarComingSoon from './components/CalendarComingSoon';
-import { getReminderTriggerDate } from './utils/dateHelpers';
-import { syncWithNative, requestNativeNotificationPermission, checkLaunchNotification, getAndClearNativeDelivered, isAndroid } from './utils/nativeReminderHelper';
+import { getDueReminders, pruneSentReminders } from './utils/reminderScheduler';
+import { syncWithNative, requestNativeNotificationPermission, checkLaunchNotification, getAndClearNativeDelivered, getNativeDiagnostics, isAndroid } from './utils/nativeReminderHelper';
 
 const getInitialBirthdays = () => {
   return [];
@@ -28,14 +28,18 @@ export function App() {
   const [selectedBirthday, setSelectedBirthday] = useState(null);
   const [editingBirthday, setEditingBirthday] = useState(null);
   const [darkMode, setDarkMode] = useLocalStorage('birthday_dark_mode', false);
-  const [toast, setToast] = useState(null);
+  // Queue so that several reminders due at the same time are all shown, one after another
+  const [toastQueue, setToastQueue] = useState([]);
+  const toast = toastQueue[0] || null;
+  const setToast = (next) => setToastQueue((q) => (next ? [...q, { ...next, id: `${Date.now()}-${Math.random()}` }] : q.slice(1)));
+  const dismissToast = () => setToastQueue((q) => q.slice(1));
   const [showPermissionModal, setShowPermissionModal] = useState(false);
   const isPopStateChange = useRef(false);
 
   useEffect(() => {
     if (toast) {
       const timer = setTimeout(() => {
-        setToast(null);
+        setToastQueue((q) => q.slice(1));
       }, 6000);
       return () => clearTimeout(timer);
     }
@@ -144,7 +148,8 @@ export function App() {
           '{"enabled":true,"daysBefore":1,"notificationTime":"09:00","leapYearDaysBefore":1}'
         );
 
-        if (!globalSettings.enabled) return;
+        // NOTE: no early return when the common switch is off - individual
+        // (custom) reminders must still fire. getDueReminders handles both.
 
         // Sync native background-delivered reminder flags to prevent duplicate foreground banners
         if (isAndroid()) {
@@ -167,55 +172,16 @@ export function App() {
           return;
         }
 
-        const sentReminders = JSON.parse(localStorage.getItem('birthday_sent_reminders') || '{}');
-        let updatedSent = false;
+        const storedSent = JSON.parse(localStorage.getItem('birthday_sent_reminders') || '{}');
+        const sentReminders = pruneSentReminders(storedSent, now);
+        let updatedSent = Object.keys(sentReminders).length !== Object.keys(storedSent).length;
 
-        birthdays.forEach((contact) => {
-          if (!contact || !contact.date) return;
-
-          // If custom reminders are explicitly disabled for this contact, skip
-          if (contact.customReminders && contact.customReminders.enabled === false) return;
-
-          const triggerDate = getReminderTriggerDate(contact, globalSettings, now);
-          if (!triggerDate) return;
-
-          // Get active timing (custom override vs global fallback)
-          const isCustom = contact.customReminders && contact.customReminders.enabled;
-          const timeStr = isCustom
-            ? (contact.customReminders.notificationTime || '09:00')
-            : (globalSettings.notificationTime || '09:00');
-
-          const [hours, minutes] = timeStr.split(':').map(Number);
-
-          const triggerTime = new Date(
-            triggerDate.getFullYear(),
-            triggerDate.getMonth(),
-            triggerDate.getDate(),
-            hours || 9,
-            minutes || 0,
-            0,
-            0
-          );
-
-          const diffMs = now.getTime() - triggerTime.getTime();
-          const oneDayMs = 24 * 60 * 60 * 1000;
-          const isValidWindow = diffMs >= 0 && diffMs < oneDayMs; // Triggers if time has passed, but within 24h
-
-          const uniqueKey = `${contact.id}_${triggerTime.getFullYear()}_${triggerTime.getMonth()}_${triggerTime.getDate()}_${hours}_${minutes}`;
-
-          console.log(`⏰ Scheduler - [${contact.name}]: now: ${now.getHours()}:${now.getMinutes()}:${now.getSeconds()}, trigger: ${hours}:${minutes}, diff: ${Math.round(diffMs / 1000)}s, valid: ${isValidWindow}, sent: ${!!sentReminders[uniqueKey]}`);
-
-
-
-          if (isValidWindow && !sentReminders[uniqueKey]) {
-            // Trigger!
-            const daysBefore = isCustom ? contact.customReminders.daysBefore : (globalSettings.daysBefore ?? 1);
-            triggerNotification(contact, daysBefore);
-
-            // Mark as sent
-            sentReminders[uniqueKey] = now.getTime();
-            updatedSent = true;
-          }
+        const due = getDueReminders(birthdays, globalSettings, now, sentReminders);
+        due.forEach((reminder) => {
+          console.log(`⏰ Scheduler - firing reminder for [${reminder.contact.name}], daysLeft: ${reminder.daysLeft}`);
+          triggerNotification(reminder);
+          sentReminders[reminder.uniqueKey] = now.getTime();
+          updatedSent = true;
         });
 
         if (updatedSent) {
@@ -226,59 +192,46 @@ export function App() {
       }
     };
 
-    const triggerNotification = (contact, daysLeft) => {
-      const title = `${contact.name}'s Birthday! 🎂`;
-      let body = '';
-      if (daysLeft === 0) {
-        body = `Today is ${contact.name}'s birthday! 🎉`;
-      } else if (daysLeft === 1) {
-        body = `Tomorrow is ${contact.name}'s birthday! 🎈`;
-      } else {
-        body = `${contact.name}'s birthday is in ${daysLeft} days! 🎁`;
+    const triggerNotification = ({ contact, title, body }) => {
+      const origin = window.location.origin;
+      const defaultIcon = origin + '/pwa-192.png';
+      // Only use the contact photo when it is a real URL / data URL (not the placeholder)
+      const hasPhoto = contact.image && !String(contact.image).endsWith('cake-icon.png');
+      const showToast = () => setToast({ title, body, contact });
+
+      // Plain `new Notification()` is not allowed on Android Chrome / iOS PWAs, so guard it
+      const showWindowNotification = () => {
+        try {
+          new Notification(title, { body, icon: hasPhoto ? contact.image : defaultIcon });
+        } catch (err) {
+          console.error('Window Notification failed, falling back to in-app toast:', err);
+          showToast();
+        }
+      };
+
+      if (!('Notification' in window) || Notification.permission !== 'granted') {
+        // Fallback to in-app toast if notifications are not supported or granted
+        showToast();
+        return;
       }
 
-      const defaultIcon = window.location.origin + '/icon.svg';
-
-      if ('Notification' in window && Notification.permission === 'granted') {
-        try {
-          if (navigator.serviceWorker) {
-            navigator.serviceWorker.ready.then((registration) => {
-              registration.showNotification(title, {
-                body,
-                icon: contact.image || defaultIcon,
-                badge: defaultIcon,
-                vibrate: [200, 100, 200],
-                tag: `bday-reminder-${contact.id}`,
-                renotify: true
-              }).catch(() => {
-                new Notification(title, {
-                  body,
-                  icon: contact.image || defaultIcon
-                });
-              });
-            });
-          } else {
-            new Notification(title, {
-              body,
-              icon: contact.image || defaultIcon
-            });
-          }
-        } catch (err) {
-          console.error('Error triggering local desktop Notification:', err);
-          // Fallback to in-app toast on error
-          setToast({
-            title,
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.ready
+          .then((registration) => registration.showNotification(title, {
             body,
-            contact
+            icon: hasPhoto ? contact.image : defaultIcon,
+            badge: origin + '/notification-badge.png', // monochrome, Android status bar
+            vibrate: [200, 100, 200],
+            tag: `bday-reminder-${contact.id}`,
+            renotify: true,
+            data: { birthdayId: contact.id }
+          }))
+          .catch((err) => {
+            console.error('Service worker notification failed:', err);
+            showWindowNotification();
           });
-        }
       } else {
-        // Fallback to in-app toast if native notifications are not supported or granted
-        setToast({
-          title,
-          body,
-          contact
-        });
+        showWindowNotification();
       }
     };
 
@@ -315,7 +268,16 @@ export function App() {
   // 6. Friendly explanation permission prompt check on first startup after install
   useEffect(() => {
     const checkPermissionOnStartup = async () => {
-      if (!isAndroid()) return;
+      if (!isAndroid()) {
+        // Web / iPhone PWA: reminders are ON by default, so the user never flips the
+        // switch that used to request permission. Ask once with the friendly modal
+        // (iOS only allows the request from a tap, which the "Allow" button provides).
+        if ('Notification' in window && Notification.permission === 'default'
+          && localStorage.getItem('notificationPermissionRequested') !== 'true') {
+          setShowPermissionModal(true);
+        }
+        return;
+      }
 
       try {
         const diagnostics = await getNativeDiagnostics();
@@ -347,6 +309,16 @@ export function App() {
     
     localStorage.setItem('notificationPermissionRequested', 'true');
     console.log("🔔 Permission Check - Saved prompt flag: notificationPermissionRequested = true");
+
+    if (!isAndroid()) {
+      if ('Notification' in window) {
+        // Called synchronously inside the tap handler - required by iOS Safari
+        Notification.requestPermission().then((permission) => {
+          console.log('🔔 Permission Check - Web permission result:', permission);
+        });
+      }
+      return;
+    }
 
     const granted = await requestNativeNotificationPermission();
     if (granted) {
@@ -460,8 +432,9 @@ export function App() {
       {/* Premium Glassmorphic In-App Toast Notification */}
       {toast && (
         <div
-          className="fixed top-4 left-1/2 -translate-x-1/2 z-[9999] w-[90%] max-w-[380px] bg-gradient-to-r from-[#F2591D] to-[#ff783e] text-white p-4 rounded-2xl shadow-[0_15px_30px_-5px_rgba(242,89,29,0.3)] border border-white/25 flex items-start gap-3.5 animate-slide-down cursor-pointer select-none"
-          onClick={() => setToast(null)}
+          key={toast.id}
+          className="reminder-toast fixed inset-x-0 mx-auto z-[9999] w-[90%] max-w-[380px] bg-gradient-to-r from-[#F2591D] to-[#ff783e] text-white p-4 rounded-2xl shadow-[0_15px_30px_-5px_rgba(242,89,29,0.3)] border border-white/25 flex items-start gap-3.5 animate-slide-down cursor-pointer select-none"
+          onClick={() => dismissToast()}
         >
           <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center text-xl shrink-0 animate-bounce">
             🎂
@@ -473,7 +446,7 @@ export function App() {
           <button
             onClick={(e) => {
               e.stopPropagation();
-              setToast(null);
+              dismissToast();
             }}
             className="text-white/60 hover:text-white active:scale-90 transition-all font-bold text-xs p-1.5 rounded-full hover:bg-white/10 shrink-0 flex items-center justify-center w-6 h-6"
             aria-label="Close Notification"

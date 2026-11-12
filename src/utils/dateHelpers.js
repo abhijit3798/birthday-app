@@ -170,9 +170,13 @@ export function getReminderTriggerDate(birthday, globalSettings, today = new Dat
     return null;
   }
 
+  // Individual reminders have no separate "Feb 29" field in the UI (the stored
+  // customReminders.leapYearDaysBefore is just a hard-coded default of 1), so a
+  // custom reminder always uses the person's own "days before" value.
+  const customDaysBefore = (isCustom && customEnabled) ? Number(birthday.customReminders.daysBefore ?? 1) : null;
   const activeSettings = {
-    daysBefore: (isCustom && customEnabled) ? birthday.customReminders.daysBefore : (globalSettings?.daysBefore ?? 1),
-    leapYearDaysBefore: (isCustom && customEnabled) ? (birthday.customReminders.leapYearDaysBefore ?? birthday.customReminders.daysBefore) : (globalSettings?.leapYearDaysBefore ?? 1)
+    daysBefore: customDaysBefore ?? Number(globalSettings?.daysBefore ?? 1),
+    leapYearDaysBefore: customDaysBefore ?? Number(globalSettings?.leapYearDaysBefore ?? 1)
   };
 
   const birthMonth = dob.getMonth();
@@ -185,12 +189,12 @@ export function getReminderTriggerDate(birthday, globalSettings, today = new Dat
   const targetYear = nextBday.getFullYear();
   const isLeapYear = (targetYear % 4 === 0 && targetYear % 100 !== 0) || (targetYear % 400 === 0);
 
-  let daysBefore = activeSettings.daysBefore || 0;
+  let daysBefore = Number.isFinite(activeSettings.daysBefore) ? activeSettings.daysBefore : 0;
   let baseDate = nextBday;
 
   // Handle Feb 29 in non-leap year
   if (isFeb29 && !isLeapYear) {
-    daysBefore = activeSettings.leapYearDaysBefore || 0;
+    daysBefore = Number.isFinite(activeSettings.leapYearDaysBefore) ? activeSettings.leapYearDaysBefore : 0;
     baseDate = new Date(targetYear, 1, 28);
   }
 

@@ -1,30 +1,40 @@
+import { useId } from 'react';
 
+/**
+ * 4-candle birthday cake - same artwork as the installed app icon.
+ * Drawn in `currentColor`; the tier lines and flame cores are cut out
+ * (transparent), so it works on any background.
+ */
 export function CakeIcon({ className = '', size = 24 }) {
+  const maskId = `cake-mask-${useId().replace(/:/g, '')}`;
   return (
     <svg
       width={size}
       height={size}
       viewBox="0 0 100 100"
-      fill="currentColor"
       className={className}
       xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
     >
-      {/* Bottom Tier */}
-      <rect x="15" y="55" width="70" height="28" rx="6" />
-      {/* Top Tier */}
-      <rect x="25" y="30" width="50" height="25" rx="5" />
-      {/* Left Candle */}
-      <rect x="37" y="16" width="3" height="14" rx="1" />
-      {/* Center Candle */}
-      <rect x="48.5" y="12" width="3" height="18" rx="1" />
-      {/* Right Candle */}
-      <rect x="60" y="16" width="3" height="14" rx="1" />
-      {/* Left Flame */}
-      <path d="M38.5,8 C39.5,8 40,10 40,11.5 C40,13 39.3,13.5 38.5,13.5 C37.7,13.5 37,13 37,11.5 C37,10 37.5,8 38.5,8 Z" />
-      {/* Center Flame */}
-      <path d="M50,3 C51.3,3 52,5.5 52,7.5 C52,9.5 51.1,10 50,10 C48.9,10 48,9.5 48,7.5 C48,5.5 48.7,3 50,3 Z" />
-      {/* Right Flame */}
-      <path d="M61.5,8 C62.5,8 63,10 63,11.5 C63,13 62.3,13.5 61.5,13.5 C60.7,13.5 60,13 60,11.5 C60,10 60.5,8 61.5,8 Z" />
+      <defs>
+        <mask id={maskId}>
+          <rect x="0" y="0" width="100" height="100" fill="black"/>
+          <path d="M9 56 A41 8 0 0 1 91 56 L91 88 A41 7 0 0 1 9 88 Z" fill="white"/>
+          <path d="M9 62.5 A41 7.5 0 0 0 91 62.5" fill="none" stroke="black" strokeWidth="1.8"/>
+          <path d="M20 33 A30 5.5 0 0 1 80 33 L80 54 A30 6 0 0 1 20 54 Z" fill="white" stroke="black" strokeWidth="2.6"/>
+          <path d="M20 36 A30 5.5 0 0 0 80 36" fill="none" stroke="black" strokeWidth="1.6"/>
+          <rect x="29.2" y="14" width="4.4" height="19" fill="white"/>
+          <rect x="41.8" y="14" width="4.4" height="19" fill="white"/>
+          <rect x="54.3" y="14" width="4.4" height="19" fill="white"/>
+          <rect x="66.9" y="14" width="4.4" height="19" fill="white"/>
+          <path d="M31.4 4.5 C34.2 7.5 34.4 10.6 31.4 11.6 C28.4 10.6 28.6 7.5 31.4 4.5 Z" fill="white"/>
+          <path d="M44 4.5 C46.8 7.5 47 10.6 44 11.6 C41 10.6 41.2 7.5 44 4.5 Z" fill="white"/>
+          <path d="M56.5 4.5 C59.3 7.5 59.5 10.6 56.5 11.6 C53.5 10.6 53.7 7.5 56.5 4.5 Z" fill="white"/>
+          <path d="M69.1 4.5 C71.9 7.5 72.1 10.6 69.1 11.6 C66.1 10.6 66.3 7.5 69.1 4.5 Z" fill="white"/>
+          <ellipse cx="31.4" cy="9.4" rx="0.9" ry="1.5" fill="black"/><ellipse cx="44" cy="9.4" rx="0.9" ry="1.5" fill="black"/><ellipse cx="56.5" cy="9.4" rx="0.9" ry="1.5" fill="black"/><ellipse cx="69.1" cy="9.4" rx="0.9" ry="1.5" fill="black"/>
+        </mask>
+      </defs>
+      <rect width="100" height="100" fill="currentColor" mask={`url(#${maskId})`} />
     </svg>
   );
 }

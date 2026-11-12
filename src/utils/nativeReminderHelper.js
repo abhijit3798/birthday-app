@@ -26,11 +26,17 @@ export async function syncWithNative(birthdays, globalSettings) {
       customReminders: b.customReminders || null
     }));
 
+    // Number(undefined) is NaN (never null), so `?? 1` never applied - validate explicitly
+    const toDays = (value) => {
+      const n = Number(value);
+      return Number.isFinite(n) && n >= 0 ? Math.floor(n) : 1;
+    };
+
     const formattedSettings = {
       enabled: !!globalSettings.enabled,
-      daysBefore: Number(globalSettings.daysBefore) ?? 1,
+      daysBefore: toDays(globalSettings.daysBefore),
       notificationTime: globalSettings.notificationTime || '09:00',
-      leapYearDaysBefore: Number(globalSettings.leapYearDaysBefore) ?? 1
+      leapYearDaysBefore: toDays(globalSettings.leapYearDaysBefore)
     };
 
     console.log('⏰ Native Sync - Calling scheduleReminders with Birthdays Payload:', JSON.stringify(formattedBirthdays, null, 2));

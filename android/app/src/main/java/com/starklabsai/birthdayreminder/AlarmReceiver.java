@@ -30,6 +30,14 @@ public class AlarmReceiver extends BroadcastReceiver {
 
             // Trigger tray notification display
             NotificationHelper.showNotification(context, id, name, age, birthDate, daysBefore, hideYear);
+
+            // Schedule next year's reminder right away instead of waiting for the app to be opened
+            try {
+                androidx.work.WorkManager.getInstance(context.getApplicationContext()).enqueue(
+                        new androidx.work.OneTimeWorkRequest.Builder(RescheduleWorker.class).build());
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
     }
 }

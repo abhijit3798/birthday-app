@@ -1,5 +1,6 @@
+/* global process */
 import assert from 'assert';
-import { getNextBirthday, getReminderTriggerDate, parseDate } from '../utils/dateHelpers.js';
+import { getReminderTriggerDate } from '../utils/dateHelpers.js';
 
 console.log('🧪 Starting Automated Notification System Tests...\n');
 

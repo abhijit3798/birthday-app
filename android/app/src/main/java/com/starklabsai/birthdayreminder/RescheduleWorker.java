@@ -112,7 +112,9 @@ public class RescheduleWorker extends Worker {
                         if (customEnabled) {
                             shouldSchedule = true;
                             daysBefore = custom.optInt("daysBefore", 1);
-                            leapYearDaysBefore = custom.optInt("leapYearDaysBefore", daysBefore);
+                            // Individual reminders have no separate Feb-29 field in the UI, so use
+                            // the person's own "days before" (matches dateHelpers.js).
+                            leapYearDaysBefore = daysBefore;
                             timeStr = custom.optString("notificationTime", "09:00");
                         } else {
                             // Case 3: Custom disabled. Do not schedule reminder.
@@ -140,17 +142,17 @@ public class RescheduleWorker extends Worker {
                     continue;
                 }
 
-                // Calculate the age turning this year
+                // Birthday this reminder belongs to (Feb 29 -> Feb 28 in non-leap years),
+                // the real number of days left, and the age being turned.
+                Calendar bdayDate = getNextBirthday(
+                        Integer.parseInt(dateStr.split("-")[0]),
+                        Integer.parseInt(dateStr.split("-")[1]) - 1,
+                        Integer.parseInt(dateStr.split("-")[2]),
+                        triggerTime);
+                int daysLeft = daysBetween(triggerTime, bdayDate);
                 int age = -1;
                 try {
-                    String[] parts = dateStr.split("-");
-                    int birthYear = Integer.parseInt(parts[0]);
-                    int upcomingYear = triggerTime.get(Calendar.YEAR);
-                    // Add back the daysBefore difference to get the birthday year
-                    Calendar bdayDate = (Calendar) triggerTime.clone();
-                    bdayDate.add(Calendar.DAY_OF_MONTH, daysBefore);
-                    upcomingYear = bdayDate.get(Calendar.YEAR);
-                    age = upcomingYear - birthYear;
+                    age = bdayDate.get(Calendar.YEAR) - Integer.parseInt(dateStr.split("-")[0]);
                 } catch (Exception ignored) {}
 
                 // Construct unique key to track background deliveries and prevent duplicate in-app banners
@@ -168,7 +170,7 @@ public class RescheduleWorker extends Worker {
                 intent.putExtra("name", name);
                 intent.putExtra("age", age);
                 intent.putExtra("birthDate", dateStr);
-                intent.putExtra("daysBefore", daysBefore);
+                intent.putExtra("daysBefore", daysLeft);
                 intent.putExtra("hideYear", hideYear);
                 intent.putExtra("uniqueKey", uniqueKey);
 
@@ -181,16 +183,19 @@ public class RescheduleWorker extends Worker {
                 );
 
                 try {
-                    alarmManager.set(
-                            AlarmManager.RTC_WAKEUP,
-                            triggerTime.getTimeInMillis(),
-                            pendingIntent
-                    );
+                    // Plain set() can be postponed for hours by Doze. Use an exact alarm when the
+                    // user allowed it, otherwise the idle-safe inexact variant.
+                    boolean canExact = Build.VERSION.SDK_INT < Build.VERSION_CODES.S || alarmManager.canScheduleExactAlarms();
+                    if (canExact) {
+                        alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerTime.getTimeInMillis(), pendingIntent);
+                    } else {
+                        alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerTime.getTimeInMillis(), pendingIntent);
+                    }
                     newlyScheduled.add(id);
-                    Log.d(TAG, "Scheduled alarm for " + name + " (ID: " + id + ") at: " + triggerTime.getTime().toString() + " (Age: " + age + ")");
+                    Log.d(TAG, "Scheduled alarm for " + name + " (ID: " + id + ") at: " + triggerTime.getTime().toString() + " (Age: " + age + ", daysLeft: " + daysLeft + ")");
                 } catch (SecurityException se) {
-                    Log.w(TAG, "SecurityException scheduling exact alarm. Falling back to non-exact scheduling.", se);
-                    alarmManager.set(AlarmManager.RTC_WAKEUP, triggerTime.getTimeInMillis(), pendingIntent);
+                    Log.w(TAG, "SecurityException scheduling exact alarm. Falling back to inexact scheduling.", se);
+                    alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerTime.getTimeInMillis(), pendingIntent);
                     newlyScheduled.add(id);
                 }
             }
@@ -200,6 +205,19 @@ public class RescheduleWorker extends Worker {
 
         // 4. Update scheduled IDs in SharedPreferences
         prefs.edit().putStringSet("scheduled_ids", newlyScheduled).apply();
+    }
+
+    /** Whole calendar days from {@code from} to {@code to} (time of day ignored). */
+    public static int daysBetween(Calendar from, Calendar to) {
+        Calendar a = (Calendar) from.clone();
+        Calendar b = (Calendar) to.clone();
+        for (Calendar c : new Calendar[]{a, b}) {
+            c.set(Calendar.HOUR_OF_DAY, 12);
+            c.set(Calendar.MINUTE, 0);
+            c.set(Calendar.SECOND, 0);
+            c.set(Calendar.MILLISECOND, 0);
+        }
+        return (int) Math.round((b.getTimeInMillis() - a.getTimeInMillis()) / 86400000.0);
     }
 
     /**
